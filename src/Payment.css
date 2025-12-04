@@ -1,0 +1,200 @@
+.payment-page {
+  min-height: 100vh;
+  padding: 32px;
+  background: radial-gradient(circle at top, #04050c, #010101 65%);
+  font-family: "Inter", "Segoe UI", system-ui, sans-serif;
+  color: var(--text-primary);
+  display: flex;
+  flex-wrap: wrap;
+  gap: 24px;
+}
+
+.payment-panel,
+.payment-form {
+  flex: 1 1 45%;
+  background: var(--surface);
+  border-radius: 28px;
+  padding: 32px;
+  box-shadow: 0 35px 90px rgba(0, 0, 0, 0.75);
+  border: 1px solid rgba(69, 81, 132, 0.3);
+}
+
+.payment-panel h1 {
+  margin: 8px 0 12px;
+  font-size: clamp(2rem, 3vw, 2.8rem);
+}
+
+.subtitle {
+  color: var(--text-muted);
+  line-height: 1.6;
+}
+
+.qr-block {
+  margin-top: 24px;
+  display: flex;
+  gap: 20px;
+  align-items: center;
+}
+
+.qr-block img {
+  width: 180px;
+  height: 180px;
+  object-fit: cover;
+  border-radius: 16px;
+  border: 6px solid rgba(255, 255, 255, 0.08);
+  background: #fff;
+}
+
+.booking-summary {
+  margin-top: 28px;
+  background: #0c1225;
+  border-radius: 22px;
+  padding: 20px;
+  border: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.booking-summary ul {
+  list-style: none;
+  margin: 12px 0 0 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.booking-summary li {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.95rem;
+}
+
+.payment-form header h2 {
+  margin: 0;
+  font-size: 1.8rem;
+}
+
+.payment-form header p {
+  margin: 6px 0 16px;
+  color: var(--text-muted);
+}
+
+.payment-form label {
+  font-weight: 600;
+  margin-top: 12px;
+  display: block;
+}
+
+.payment-form input[type="file"] {
+  margin-top: 8px;
+}
+
+.payment-form textarea {
+  resize: vertical;
+}
+
+.input {
+  width: 100%;
+  padding: 12px 14px;
+  border-radius: 16px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  margin-top: 6px;
+  background: #0d1428;
+  color: var(--text-primary);
+  font-size: 1rem;
+}
+
+.input:focus {
+  border-color: var(--primary);
+  box-shadow: 0 0 0 3px rgba(124, 93, 255, 0.25);
+  outline: none;
+}
+
+.receipt-preview {
+  margin-top: 16px;
+  max-height: 240px;
+  overflow: hidden;
+  border-radius: 18px;
+  border: 1px solid rgba(32, 45, 78, 0.12);
+}
+
+.receipt-preview img {
+  width: 100%;
+  display: block;
+}
+
+.form-alert {
+  border-radius: 16px;
+  padding: 12px 16px;
+  margin-bottom: 8px;
+  font-weight: 600;
+}
+
+.form-alert.error {
+  background: rgba(255, 91, 91, 0.12);
+  color: #ffa1a1;
+  border: 1px solid rgba(255, 91, 91, 0.35);
+}
+
+.form-alert.success {
+  background: rgba(45, 212, 191, 0.12);
+  color: #7ffff0;
+  border: 1px solid rgba(45, 212, 191, 0.35);
+}
+
+.file-label {
+  margin-top: 6px;
+  font-size: 0.9rem;
+  color: #5a6078;
+}
+
+.action-btn {
+  margin-top: 20px;
+  border: none;
+  border-radius: 20px;
+  padding: 16px;
+  width: 100%;
+  background: linear-gradient(130deg, var(--primary), #ff85c0);
+  color: #fff;
+  font-weight: 700;
+  font-size: 1rem;
+  cursor: pointer;
+  box-shadow: 0 25px 60px rgba(126, 77, 251, 0.35);
+  transition: transform 0.2s ease;
+}
+
+.action-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.action-btn:not(:disabled):hover {
+  transform: translateY(-2px);
+}
+
+.text-link {
+  background: none;
+  border: none;
+  color: var(--primary);
+  font-weight: 600;
+  cursor: pointer;
+  padding: 0;
+}
+
+@media (max-width: 900px) {
+  .payment-panel,
+  .payment-form {
+    flex: 1 1 100%;
+  }
+
+  .qr-block {
+    flex-direction: column;
+    text-align: center;
+  }
+}
+
+@media (max-width: 600px) {
+  .payment-page {
+    padding: 16px;
+  }
+}
+
