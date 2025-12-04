@@ -13,16 +13,21 @@ const seatingOptions = [
   { id: "banquet", label: "Banquet seating", description: "Ideal for large dinners and galas." },
 ];
 
-const mainDishes = ["Western set", "Asian fusion", "Buffet style"];
-
-const sideDishOptions = [
-  "Welcome canapés",
-  "Coffee & tea station",
-  "Soft drink package",
-  "Late‑night snacks",
+const mainDishes = [
+  "Grilled Chicken with 1 Side",
+  "Grilled Chicken with 2 Sides",
+  "Grilled Chicken with 3 Sides",
+  "Double Chicken Grilled with 3 Sides"
 ];
 
-const dessertOptions = ["Mini desserts platter", "Custom cake", "Ice cream bar"];
+const sideDishOptions = [
+  "Mashed Potato",
+  "Steamed Green",
+  "Potato Salad",
+  "Salad",
+];
+
+const dessertOptions = ["Matcha Bingsu", "Biscoff Bingsu"];
 
 const getCurrentUserFromToken = () => {
   const token = localStorage.getItem("token");
@@ -145,31 +150,29 @@ const Booking = () => {
     <div className="booking-page">
       <section className="booking-hero">
         <span className="hero-pill">
-          ✦ Booking workspace <span>Live preview</span>
+          ✦ Book Your Event
         </span>
-        <h1>Design your event and send us the brief in one form.</h1>
+        <h1>Plan your event menu in minutes.</h1>
         <p>
-          Capture the essentials—date, guest count, and menu—so our team can confirm availability
-          and prepare a precise proposal without the back‑and‑forth.
+          Choose your date, guest count, and menu options. We'll handle the rest and get back to you within 24 hours.
         </p>
         <div className="hero-meta">
-          <span>• Typical confirmation in under 24 hours</span>
-          <span>• Bank‑transfer payments via QR</span>
-          <span>• Local admin can update status anytime</span>
+          <span>• Quick 24-hour confirmation</span>
+          <span>• Easy QR payment</span>
+          <span>• Live status tracking</span>
         </div>
       </section>
 
       <div className="booking-layout">
         <form className="booking-form" onSubmit={handleSubmit} noValidate>
           <div className="status-banner">
-            Draft only. Your booking is confirmed once an admin changes the status to
-            “Completed”.
+            📝 Draft Mode - Your booking will be confirmed by an admin after payment
           </div>
 
           <div className="field-card">
             <header>
-              <p className="label">Event basics</p>
-              <h3>Tell us what you’re hosting</h3>
+              <p className="label">Event Details</p>
+              <h3>What are you celebrating?</h3>
             </header>
             <input
               className={`input ${errors.event ? "error" : ""}`}
@@ -231,8 +234,8 @@ const Booking = () => {
 
           <div className="field-card">
             <header>
-              <p className="label">Seating & menu</p>
-              <h3>How should the room and food feel?</h3>
+              <p className="label">Menu Selection</p>
+              <h3>Choose your meal options</h3>
             </header>
 
             <div className="option-stack">
@@ -325,8 +328,8 @@ const Booking = () => {
 
         <aside className="booking-sidebar">
           <div className="summary-card">
-            <p className="label">Booking summary</p>
-            <h3>Quick snapshot</h3>
+            <p className="label">Your Summary</p>
+            <h3>Booking preview</h3>
             <ul>
               <li>
                 <span>Event</span>
@@ -360,17 +363,12 @@ const Booking = () => {
           </div>
 
           <div className="tips-card">
-            <p className="label">Tips</p>
-            <h3>Help us confirm faster</h3>
+            <p className="label">What's Next?</p>
+            <h3>After booking</h3>
             <ul>
-              <li>Use the same email you logged in with so bookings stay linked to your account.</li>
-              <li>
-                After submitting this form you’ll be taken to the payment page to upload your bank
-                transfer receipt.
-              </li>
-              <li>
-                You can always see your status in the Booking History section on the main dashboard.
-              </li>
+              <li>You'll be taken to the payment page to upload your receipt.</li>
+              <li>We'll confirm your booking within 24 hours.</li>
+              <li>Check your booking status in Booking History anytime.</li>
             </ul>
           </div>
         </aside>
