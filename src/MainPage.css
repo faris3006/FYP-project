@@ -1,83 +1,131 @@
+/* Modern 2025 MainPage - Glasmorphic Hero & Animations */
+
 .landing-page {
   min-height: 100vh;
   padding: 24px;
-  background: radial-gradient(circle at top, #080c1b 0%, #05070d 55%, #04050b 100%);
-  font-family: "Inter", "Segoe UI", system-ui, -apple-system, sans-serif;
+  background: var(--gradient-bg);
+  background-size: 400% 400%;
+  animation: gradientShift 15s ease infinite;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif;
   color: var(--text-primary);
   display: flex;
   flex-direction: column;
   gap: 32px;
+  position: relative;
+  overflow: hidden;
+}
+
+.landing-page::before {
+  content: '';
+  position: absolute;
+  width: 400px;
+  height: 400px;
+  background: radial-gradient(circle, rgba(102, 126, 234, 0.12) 0%, transparent 70%);
+  border-radius: 50%;
+  top: -150px;
+  left: -100px;
+  animation: float 6s ease-in-out infinite;
+  pointer-events: none;
+  z-index: 1;
+}
+
+.landing-page::after {
+  content: '';
+  position: absolute;
+  width: 400px;
+  height: 400px;
+  background: radial-gradient(circle, rgba(245, 87, 108, 0.12) 0%, transparent 70%);
+  border-radius: 50%;
+  bottom: -200px;
+  right: -100px;
+  animation: float 8s ease-in-out infinite reverse;
+  pointer-events: none;
+  z-index: 1;
 }
 
 .top-nav {
-  background: rgba(17, 24, 39, 0.85);
-  border: 1px solid rgba(124, 93, 255, 0.2);
-  box-shadow: 0 25px 70px rgba(5, 12, 32, 0.6);
-  backdrop-filter: blur(18px);
-  border-radius: 18px;
-  padding: 18px 28px;
+  background: var(--bg-card);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid var(--border-color);
+  box-shadow: var(--shadow-xl);
+  border-radius: 16px;
+  padding: 16px 28px;
   display: flex;
   align-items: center;
   justify-content: space-between;
+  position: relative;
+  z-index: 100;
 }
 
 .brand {
   font-size: 1.4rem;
-  font-weight: 700;
-  letter-spacing: 0.14em;
-  text-transform: uppercase;
-  color: var(--primary);
+  font-weight: 800;
+  background: var(--gradient-main);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
   cursor: pointer;
+  transition: transform 0.3s ease;
+}
+
+.brand:hover {
+  transform: scale(1.05);
 }
 
 .nav-actions {
   display: flex;
   gap: 12px;
+  z-index: 100;
 }
 
 .solid-btn,
 .ghost-btn,
 .text-btn {
   border: none;
-  border-radius: 999px;
-  font-weight: 600;
+  border-radius: 12px;
+  font-weight: 700;
   cursor: pointer;
-  transition: transform 0.2s ease, box-shadow 0.2s ease, background 0.2s ease;
+  transition: all 0.3s ease;
+  font-size: 0.9rem;
 }
 
 .solid-btn {
-  background: linear-gradient(135deg, var(--primary), var(--primary-alt));
-  color: var(--text-primary);
-  padding: 10px 22px;
-  box-shadow: 0 10px 30px rgba(109, 77, 251, 0.2);
+  background: var(--gradient-main);
+  color: #fff;
+  padding: 12px 24px;
+  box-shadow: 0 10px 30px rgba(102, 126, 234, 0.3);
 }
 
 .ghost-btn {
-  background: rgba(124, 93, 255, 0.16);
-  color: var(--primary);
-  padding: 10px 22px;
+  background: rgba(102, 126, 234, 0.15);
+  color: var(--text-primary);
+  padding: 12px 24px;
+  border: 1px solid rgba(102, 126, 234, 0.3);
 }
 
 .ghost-btn.small {
-  padding: 6px 16px;
+  padding: 8px 16px;
   font-size: 0.85rem;
 }
 
 .text-btn {
   background: transparent;
-  color: var(--primary);
+  color: var(--text-primary);
   padding: 0;
+  font-weight: 600;
 }
 
 .solid-btn:hover,
 .ghost-btn:hover,
 .text-btn:hover {
   transform: translateY(-2px);
-  box-shadow: 0 12px 28px rgba(109, 77, 251, 0.25);
+  box-shadow: 0 15px 40px rgba(102, 126, 234, 0.4);
 }
 
 .ghost-btn:hover {
-  background: rgba(109, 77, 251, 0.2);
+  background: rgba(102, 126, 234, 0.25);
+  border-color: rgba(102, 126, 234, 0.5);
 }
 
 .ghost-btn.small:hover {
@@ -91,35 +139,48 @@
 }
 
 .hero {
-  background: #0b0f1f;
+  background: var(--bg-card);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid var(--border-color);
   color: var(--text-primary);
-  border-radius: 28px;
-  padding: 48px 56px;
-  box-shadow: 0 30px 80px rgba(16, 23, 39, 0.5);
+  border-radius: 20px;
+  padding: 60px 56px;
+  box-shadow: var(--shadow-xl);
   display: flex;
   flex-direction: column;
-  gap: 20px;
+  gap: 24px;
+  position: relative;
+  z-index: 10;
+  animation: slideUp 0.6s ease-out;
 }
 
 .hero-pill {
-  background: rgba(118, 186, 255, 0.2);
-  color: var(--primary-alt);
-  border-radius: 999px;
+  background: rgba(102, 126, 234, 0.15);
+  color: #8bc7ff;
+  border-radius: 20px;
   align-self: flex-start;
-  padding: 6px 16px;
-  font-size: 0.85rem;
-  letter-spacing: 0.08em;
+  padding: 8px 16px;
+  font-size: 0.75rem;
+  letter-spacing: 0.1em;
+  font-weight: 700;
+  text-transform: uppercase;
 }
 
 .hero h1 {
-  font-size: clamp(2.5rem, 4vw, 3.6rem);
-  max-width: 680px;
+  font-size: clamp(2.5rem, 5vw, 3.8rem);
+  max-width: 700px;
   line-height: 1.1;
+  font-weight: 900;
+  background: var(--gradient-main);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
 }
 
 .hero-subtitle {
-  color: rgba(245, 247, 255, 0.7);
-  font-size: 1.1rem;
+  color: var(--text-secondary);
+  font-size: 1.15rem;
   max-width: 640px;
   line-height: 1.6;
 }
@@ -127,32 +188,46 @@
 .hero-ctas {
   display: flex;
   flex-wrap: wrap;
-  gap: 14px;
+  gap: 16px;
+  margin-top: 16px;
 }
 
 .hero-stats {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
   gap: 12px;
+  margin-top: 24px;
 }
 
 .stat-card {
-  background: rgba(255, 255, 255, 0.05);
-  border-radius: 16px;
-  padding: 18px;
+  background: rgba(102, 126, 234, 0.08);
+  border: 1px solid rgba(102, 126, 234, 0.2);
+  border-radius: 12px;
+  padding: 20px;
   text-align: center;
+  transition: all 0.3s ease;
+}
+
+.stat-card:hover {
+  background: rgba(102, 126, 234, 0.12);
+  border-color: rgba(102, 126, 234, 0.4);
 }
 
 .stat-card span {
   font-size: 1.8rem;
-  font-weight: 700;
+  font-weight: 800;
   display: block;
+  background: var(--gradient-main);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
 }
 
 .feature-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
   gap: 18px;
+  margin-top: 32px;
 }
 
 .feature-card {

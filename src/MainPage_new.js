@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { jwtDecode } from "jwt-decode";
-import "./shared.css";
 import "./MainPage.css";
 
 const MainPage = () => {
@@ -17,14 +16,19 @@ const MainPage = () => {
         const user = jwtDecode(token);
         setUserRole(user.role);
       } catch (err) {
-        setIsLoggedIn(false);
+        console.error("Invalid token:", err);
+        setUserRole(null);
       }
+    } else {
+      setIsLoggedIn(false);
+      setUserRole(null);
     }
   }, []);
 
   const handleLogout = () => {
     localStorage.removeItem("token");
     setIsLoggedIn(false);
+    setUserRole(null);
     navigate("/login");
   };
 
@@ -52,7 +56,7 @@ const MainPage = () => {
 
       <main className="hero-section">
         <h1>Plan Your Event<br/>In Minutes</h1>
-        <p className="subtitle-hero">Simple booking. Easy payment. Fast confirmation.</p>
+        <p className="subtitle">Simple booking. Easy payment. Fast confirmation.</p>
         <div className="cta-buttons">
           {!isLoggedIn ? (
             <>

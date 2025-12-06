@@ -1,18 +1,18 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
+import { jwtDecode } from "jwt-decode";
+import "./shared.css";
 import "./Payment.css";
 import qrImage from "./assets/QR payment.jpeg";
 import {
   getBookingById,
-  getBookingsByUser,
   upsertBooking,
 } from "./utils/bookingStorage";
 import {
   saveReceiptBlob,
-  getReceiptObjectURL,
 } from "./utils/receiptStore";
 
-const MAX_FILE_SIZE = 20 * 1024 * 1024; // 20 MB
+const MAX_FILE_SIZE = 20 * 1024 * 1024;
 
 const Payment = () => {
   const navigate = useNavigate();
@@ -23,233 +23,310 @@ const Payment = () => {
   const storedId = localStorage.getItem("ee_active_booking_id");
   const bookingId = bookingFromState || queryId || storedId;
 
-  const [booking, setBooking] = useState(() =>
-    bookingId ? getBookingById(bookingId) : null
-  );
-  const [amount, setAmount] = useState(booking?.amountDue ?? "");
-  const [notes, setNotes] = useState("");
+  const [booking, setBooking] = useState(null);
   const [filePreview, setFilePreview] = useState("");
-  const [receiptName, setReceiptName] = useState(
-    booking?.payment?.receiptName ?? ""
-  );
+  const [receiptName, setReceiptName] = useState("");
   const [selectedFile, setSelectedFile] = useState(null);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
 
+  // Load booking data on mount
   useEffect(() => {
-    const loadBooking = async () => {
-      if (bookingId) {
-        const latest = getBookingById(bookingId);
-        if (latest) {
-          setBooking(latest);
-          if (!amount) setAmount(latest.amountDue ?? "");
-          if (latest.payment?.receiptStored) {
-            const url = await getReceiptObjectURL(latest.id);
-            if (url) setFilePreview(url);
-            setReceiptName(latest.payment?.receiptName ?? "");
-          }
-        }
+    // First try to get from bookingId
+    if (bookingId) {
+      const latest = getBookingById(bookingId);
+      if (latest) {
+        console.log('Loaded booking from ID:', latest);
+        setBooking(latest);
+        return;
       }
-    };
-    loadBooking();
-  }, [bookingId, amount]);
+    }
 
-  useEffect(() => {
-    return () => {
-      if (filePreview) {
-        URL.revokeObjectURL(filePreview);
+    // Then try localStorage from booking form
+    try {
+      const data = localStorage.getItem('bookingData');
+      console.log('bookingData from localStorage:', data);
+      if (data) {
+        const bookingDataFromForm = JSON.parse(data);
+        console.log('Parsed booking data:', bookingDataFromForm);
+        setBooking({
+          id: 'temp-' + Date.now(),
+          eventType: bookingDataFromForm.eventType,
+          numPeople: bookingDataFromForm.numPeople,
+          foodPackage: bookingDataFromForm.foodPackage,
+          selectedSides: bookingDataFromForm.selectedSides,
+          drink: bookingDataFromForm.drink,
+          dessert: bookingDataFromForm.dessert,
+          specialRequests: bookingDataFromForm.specialRequests,
+          payment: {},
+        });
       }
-    };
-  }, [filePreview]);
-
-  const allBookings = useMemo(() => getBookingsByUser(), []);
-
-  const handleFileChange = e => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    if (file.size > MAX_FILE_SIZE) {
-      setError("Receipt must be 20MB or less.");
-      e.target.value = "";
-      return;
+    } catch (e) {
+      console.error('Error loading booking data:', e);
     }
-    if (filePreview) {
-      URL.revokeObjectURL(filePreview);
-    }
-    const preview = URL.createObjectURL(file);
-    setFilePreview(preview);
-    setReceiptName(file.name);
-    setSelectedFile(file);
-    setError("");
-  };
+  }, [bookingId]);
 
-  const handleSubmit = e => {
-    e.preventDefault();
-    if (!booking) {
-      setError("No booking selected. Please create a booking first.");
-      return;
-    }
-    if (!amount) {
-      setError("Please enter the amount you transferred.");
-      return;
-    }
-    if (!filePreview && !booking?.payment?.receiptStored && !selectedFile) {
-      setError("Attach your transfer receipt (max 20MB).");
-      return;
-    }
-
-    setIsSubmitting(true);
-    const persistReceipt = selectedFile
-      ? saveReceiptBlob(booking.id, selectedFile)
-      : Promise.resolve();
-
-    persistReceipt
-      .then(() => {
-        const updated = {
-          ...booking,
-          status: "pending_review",
-          payment: {
-            amountPaid: Number(amount),
-            receiptStored: true,
-            receiptName,
-            notes,
-            submittedAt: new Date().toISOString(),
-          },
-        };
-
-        upsertBooking(updated);
-        localStorage.setItem("ee_active_booking_id", updated.id);
-        setSuccess("Receipt submitted! Our admin team will confirm shortly.");
-        setError("");
-        setTimeout(() => {
-          navigate("/");
-        }, 1800);
-      })
-      .catch(err => {
-        console.error("Receipt storage error:", err);
-        setError("Failed to store receipt locally. Please try again.");
-      })
-      .finally(() => setIsSubmitting(false));
-  };
-
-  if (!booking && allBookings.length === 0) {
+  if (!booking) {
     return (
       <div className="payment-page">
-        <section className="payment-panel">
-          <h1>No booking detected</h1>
-          <p>Create a booking first so we know what to reconcile.</p>
-          <button className="action-btn" onClick={() => navigate("/booking")}>
-            Go to booking form
-          </button>
-        </section>
+        <div className="booking-layout">
+          <div className="field-card error-card">
+            <p>No booking found. Please start a new booking.</p>
+            <button className="submit-booking" onClick={() => navigate("/booking")}>
+              Back to Booking
+            </button>
+          </div>
+        </div>
       </div>
     );
   }
 
+  // Calculate dynamic price based on selections
+  const calculatePrice = () => {
+    let total = 0;
+    const numPeople = parseInt(booking?.numPeople) || 1;
+
+    // Food package prices
+    const foodPrices = {
+      'Grilled Chicken with 1 Side': 25,
+      'Grilled Chicken with 2 Sides': 30,
+      'Grilled Chicken with 3 Sides': 35,
+      'Grilled Chicken with Rice (1 Side)': 28,
+      'Grilled Chicken with Rice (2 Sides)': 33,
+    };
+
+    // Drink prices
+    const drinkPrices = {
+      'Soft Drink': 3,
+      'Juice': 5,
+      'Mineral Water': 2,
+    };
+
+    // Dessert prices
+    const dessertPrices = {
+      'No Dessert': 0,
+      'Matcha Bingsu': 15,
+      'Biscoff Bingsu': 15,
+    };
+
+    // Calculate food cost
+    const foodPrice = foodPrices[booking?.foodPackage] || 0;
+    total += foodPrice * numPeople;
+
+    // Calculate drink cost
+    const drinkPrice = drinkPrices[booking?.drink] || 0;
+    total += drinkPrice * numPeople;
+
+    // Calculate dessert cost
+    const dessertPrice = dessertPrices[booking?.dessert] || 0;
+    total += dessertPrice * numPeople;
+
+    return total.toFixed(2);
+  };
+
+  const totalPrice = calculatePrice();
+
+  const handleFileChange = (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (file.size > MAX_FILE_SIZE) {
+      setError(`File too large. Max ${MAX_FILE_SIZE / 1024 / 1024}MB allowed.`);
+      return;
+    }
+
+    setSelectedFile(file);
+    setReceiptName(file.name);
+    setError("");
+
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      setFilePreview(event.target?.result ?? "");
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setError("");
+    setSuccess("");
+
+    if (!selectedFile && !filePreview) {
+      setError("Please upload a receipt");
+      return;
+    }
+
+    setIsSubmitting(true);
+    try {
+      // Get user info from token
+      const token = localStorage.getItem("token");
+      let userEmail = "";
+      let userId = "";
+      
+      if (token) {
+        try {
+          const decoded = jwtDecode(token);
+          userEmail = decoded.email || decoded.userEmail || "";
+          userId = decoded.userId || decoded.id || userEmail;
+        } catch (e) {
+          console.error("Error decoding token:", e);
+        }
+      }
+
+      if (selectedFile) {
+        await saveReceiptBlob(booking.id, selectedFile);
+      }
+
+      const updated = {
+        ...booking,
+        userId: userId || booking.id,
+        userEmail: userEmail,
+        payment: {
+          amountPaid: totalPrice,
+          receiptName,
+          receiptStored: true,
+          uploadedAt: new Date().toISOString(),
+        },
+        status: "pending_approval",
+        totalAmount: totalPrice,
+        createdAt: booking.createdAt || new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      };
+
+      console.log("Saving booking:", updated);
+      upsertBooking(updated);
+      
+      // Clear the temporary booking data
+      localStorage.removeItem('bookingData');
+      
+      setSuccess("Receipt uploaded successfully! Your booking is awaiting admin approval.");
+      
+      setTimeout(() => {
+        navigate("/booking-history");
+      }, 2000);
+    } catch (err) {
+      setError("Failed to upload receipt. Please try again.");
+      console.error(err);
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
   return (
     <div className="payment-page">
-      <section className="payment-panel">
-        <p className="label">Scan & transfer</p>
-        <h1>Complete your payment</h1>
-        <p className="subtitle">
-          Scan the QR code below using your banking app. Once the transfer is
-          complete, upload the receipt so we can verify it.
-        </p>
+      <div className="payment-hero">
+        <div className="hero-pill">Payment Required</div>
+        <h1>Complete Your Payment</h1>
+        <p>Scan the QR code or upload your payment receipt to finalize your booking.</p>
+      </div>
 
-        <div className="qr-block">
-          <img src={qrImage} alt="QR payment code" />
-          <div>
-            <p>Reference: EventEase HQ</p>
-            <p>Note: Include your full name for easier tracking.</p>
+      <form onSubmit={handleSubmit} className="booking-form-wrapper">
+        <div className="booking-layout">
+          {/* QR Payment Section */}
+          <div className="field-card">
+            <h3>Scan to Pay</h3>
+            <div className="qr-container">
+              <img src={qrImage} alt="QR Code for payment" className="qr-code" />
+            </div>
+            <p className="qr-amount">Total Amount: <strong>RM {totalPrice}</strong></p>
           </div>
-        </div>
 
-        {booking ? (
-          <div className="booking-summary">
-            <h3>Booking summary</h3>
+          {/* Booking Summary */}
+          <div className="summary-card">
+            <h3>Booking Details</h3>
             <ul>
               <li>
-                <span>Event</span>
-                <strong>{typeof booking.event === 'object' ? JSON.stringify(booking.event) : (booking.event || 'N/A')}</strong>
+                <span>Event Type:</span>
+                <strong>{booking?.eventType || '—'}</strong>
               </li>
               <li>
-                <span>Date</span>
-                <strong>{typeof booking.bookingDate === 'object' ? JSON.stringify(booking.bookingDate) : (booking.bookingDate || 'N/A')}</strong>
+                <span>Number of Guests:</span>
+                <strong>{booking?.numPeople || '—'}</strong>
               </li>
               <li>
-                <span>Time</span>
-                <strong>{typeof booking.bookingTime === 'object' ? JSON.stringify(booking.bookingTime) : (booking.bookingTime || 'N/A')}</strong>
+                <span>Main Dish:</span>
+                <strong>{booking?.foodPackage || '—'}</strong>
+              </li>
+              {booking?.selectedSides && booking.selectedSides.length > 0 && (
+                <li>
+                  <span>Selected Sides:</span>
+                  <strong>{booking.selectedSides.join(', ')}</strong>
+                </li>
+              )}
+              <li>
+                <span>Drink:</span>
+                <strong>{booking?.drink || '—'}</strong>
               </li>
               <li>
-                <span>Guests per table</span>
-                <strong>
-                  {typeof booking.guestsPerTable === 'object' ? JSON.stringify(booking.guestsPerTable) : booking.guestsPerTable} 
-                  {booking.seatingLabel && `• ${typeof booking.seatingLabel === 'object' ? JSON.stringify(booking.seatingLabel) : booking.seatingLabel}`}
-                </strong>
+                <span>Dessert:</span>
+                <strong>{booking?.dessert || '—'}</strong>
+              </li>
+              {booking?.specialRequests && (
+                <li>
+                  <span>Special Requests:</span>
+                  <strong>{booking.specialRequests}</strong>
+                </li>
+              )}
+              <li style={{ borderTop: '2px solid rgba(102, 126, 234, 0.3)', paddingTop: '16px', marginTop: '8px' }}>
+                <span style={{ fontSize: '1.1rem', fontWeight: '700' }}>Total Amount:</span>
+                <strong style={{ fontSize: '1.3rem', color: '#667eea' }}>RM {totalPrice}</strong>
               </li>
               <li>
-                <span>Status</span>
-                <strong>{typeof booking.status === 'string' ? booking.status.replace("_", " ") : (typeof booking.status === 'object' ? JSON.stringify(booking.status) : booking.status)}</strong>
+                <span>Status:</span>
+                <strong style={{ color: '#ffa500' }}>Awaiting Payment</strong>
               </li>
             </ul>
           </div>
-        ) : (
-          <div className="booking-summary">
-            <p>Select a booking from your history to continue.</p>
-            <button className="text-link" onClick={() => navigate("/booking-history")}>
-              Open booking history →
+
+          {/* Receipt Upload Section */}
+          <div className="field-card">
+            <h3>Upload Payment Receipt</h3>
+            
+            {success && (
+              <div className="alert alert-success">
+                ✓ {success}
+              </div>
+            )}
+            {error && (
+              <div className="alert alert-error">
+                ✗ {error}
+              </div>
+            )}
+
+            <label className="label">Select Receipt (Image or PDF)</label>
+            <div className="file-input-custom">
+              <input
+                type="file"
+                onChange={handleFileChange}
+                accept="image/*,.pdf"
+                id="receipt"
+                className="file-input-hidden"
+              />
+              <label htmlFor="receipt" className="file-input-label">
+                <span className="file-icon">📎</span>
+                <span className="file-text">
+                  {receiptName ? `Selected: ${receiptName}` : 'Choose Receipt File'}
+                </span>
+              </label>
+            </div>
+
+            {filePreview && (
+              <div className="preview-container">
+                <h4>Preview</h4>
+                {receiptName.toLowerCase().endsWith('.pdf') ? (
+                  <p className="pdf-note">📄 PDF file selected</p>
+                ) : (
+                  <img src={filePreview} alt="Receipt preview" className="preview-image" />
+                )}
+              </div>
+            )}
+
+            <button type="submit" className="submit-booking" disabled={isSubmitting}>
+              {isSubmitting ? "Uploading..." : "Upload & Complete Payment"}
             </button>
           </div>
-        )}
-      </section>
-
-      <form className="payment-form" onSubmit={handleSubmit}>
-        <header>
-          <h2>Upload receipt</h2>
-          <p>Provide the payment details so the admin can confirm quickly.</p>
-        </header>
-
-        {error && <div className="form-alert error">{error}</div>}
-        {success && <div className="form-alert success">{success}</div>}
-
-        <label htmlFor="amount">Amount transferred (MYR)</label>
-        <input
-          id="amount"
-          type="number"
-          min="1"
-          value={amount}
-          onChange={e => setAmount(e.target.value)}
-          className="input"
-          placeholder="Enter the exact amount sent"
-        />
-
-        <label htmlFor="receipt">Receipt (max 20MB)</label>
-        <input
-          id="receipt"
-          type="file"
-          accept="image/*,application/pdf"
-          onChange={handleFileChange}
-        />
-        {receiptName && <p className="file-label">Attached: {receiptName}</p>}
-        {filePreview && (
-          <div className="receipt-preview">
-            <img src={filePreview} alt="Receipt preview" />
-          </div>
-        )}
-
-        <label htmlFor="notes">Notes (optional)</label>
-        <textarea
-          id="notes"
-          rows="3"
-          className="input"
-          value={notes}
-          onChange={e => setNotes(e.target.value)}
-          placeholder="Share any reference number or extra context"
-        />
-
-        <button type="submit" className="action-btn" disabled={isSubmitting}>
-          {isSubmitting ? "Submitting..." : "Submit receipt & return home"}
-        </button>
+        </div>
       </form>
     </div>
   );

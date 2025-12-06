@@ -1,8 +1,7 @@
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { jwtDecode } from "jwt-decode";
-import "./shared.css";
-import "./Login.css";
+import "./Login_redesign.css";
 import API_BASE_URL from "./config/api";
 
 const Login = () => {
@@ -42,7 +41,7 @@ const Login = () => {
       } else {
         setError(data.message || "Login failed");
       }
-    } catch (err) {
+    } catch (error) {
       setError("Connection error. Please try again.");
     } finally {
       setLoading(false);

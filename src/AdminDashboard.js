@@ -313,14 +313,14 @@ const AdminDashboard = () => {
       <section>
         <h2>Receipt review queue (local)</h2>
         {localQueue.filter(b =>
-          ["awaiting_payment", "pending_review", "pending_payment"].includes(b.status)
+          ["awaiting_payment", "pending_review", "pending_payment", "pending_approval"].includes(b.status)
         ).length === 0 ? (
           <p>No local bookings yet.</p>
         ) : (
           <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
             {localQueue
               .filter(b =>
-                ["awaiting_payment", "pending_review", "pending_payment"].includes(b.status)
+                ["awaiting_payment", "pending_review", "pending_payment", "pending_approval"].includes(b.status)
               )
               .map(booking => (
               <div
@@ -333,14 +333,16 @@ const AdminDashboard = () => {
                   boxShadow: "0 25px 60px rgba(0, 0, 0, 0.5)",
                 }}
               >
-                <div style={{ display: "flex", justifyContent: "space-between", gap: 12 }}>
+                <div style={{ display: "flex", justifyContent: "space-between", gap: 12, marginBottom: 12 }}>
                   <div>
-                    <h3 style={{ margin: "0 0 6px" }}>{booking.event}</h3>
+                    <h3 style={{ margin: "0 0 6px" }}>
+                      {booking.eventType || booking.event || "Event Booking"}
+                    </h3>
                     <p style={{ margin: 0, color: "rgba(255,255,255,0.7)" }}>
-                      {booking.bookingDate} • {booking.bookingTime}
+                      User: {booking.userEmail || booking.userId || "Unknown"}
                     </p>
-                    <p style={{ margin: "4px 0 0", fontWeight: 600, color: "#9ab0ff" }}>
-                      Status: {booking.status.replace("_", " ")}
+                    <p style={{ margin: "4px 0 0", fontWeight: 600, color: "#ffa500" }}>
+                      Status: {booking.status?.replace(/_/g, " ").toUpperCase() || "PENDING"}
                     </p>
                   </div>
                   {booking.payment?.receiptStored && (
@@ -352,6 +354,9 @@ const AdminDashboard = () => {
                         background: "none",
                         border: "none",
                         cursor: "pointer",
+                        padding: "8px 12px",
+                        borderRadius: "8px",
+                        backgroundColor: "rgba(255, 140, 0, 0.15)",
                       }}
                       onClick={async () => {
                         const url = await getReceiptObjectURL(booking.id);
@@ -366,25 +371,44 @@ const AdminDashboard = () => {
                         setTimeout(() => URL.revokeObjectURL(url), 60000);
                       }}
                     >
-                      View receipt
+                      📄 View Receipt
                     </button>
                   )}
                 </div>
-                <p style={{ margin: "8px 0 4px" }}>
-                  Amount: <strong>MYR {booking.payment?.amountPaid ?? booking.amountDue}</strong>
+
+                {/* Booking Details */}
+                <div style={{ 
+                  backgroundColor: "rgba(255,255,255,0.02)", 
+                  padding: "12px", 
+                  borderRadius: "10px",
+                  marginBottom: "12px",
+                  fontSize: "0.9rem"
+                }}>
+                  <p style={{ margin: "4px 0" }}><strong>Guests:</strong> {booking.numPeople || "N/A"} people</p>
+                  <p style={{ margin: "4px 0" }}><strong>Food Package:</strong> {booking.foodPackage || "N/A"}</p>
+                  {booking.selectedSides && booking.selectedSides.length > 0 && (
+                    <p style={{ margin: "4px 0" }}><strong>Sides:</strong> {booking.selectedSides.join(", ")}</p>
+                  )}
+                  <p style={{ margin: "4px 0" }}><strong>Drink:</strong> {booking.drink || "N/A"}</p>
+                  <p style={{ margin: "4px 0" }}><strong>Dessert:</strong> {booking.dessert || "N/A"}</p>
+                </div>
+
+                <p style={{ margin: "8px 0 4px", fontSize: "1.1rem", fontWeight: "700", color: "#667eea" }}>
+                  Total Amount: <strong>RM {booking.totalAmount ?? booking.payment?.amountPaid ?? booking.amountDue}</strong>
                 </p>
+
                 <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
                   <button
                     style={buttonStyle}
-                    onClick={() => handleLocalStatus(booking.id, "completed")}
+                    onClick={() => handleLocalStatus(booking.id, "confirmed")}
                   >
-                    Mark Completed
+                    ✅ Payment Success
                   </button>
                   <button
                     style={{ ...buttonStyle, backgroundColor: "#d9534f" }}
                     onClick={() => handleLocalStatus(booking.id, "pending_payment")}
                   >
-                    Mark Pending
+                    ⏳ Pending Payment
                   </button>
                 </div>
               </div>

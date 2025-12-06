@@ -5,24 +5,34 @@ import { getBookingsByUser } from "./utils/bookingStorage";
 
 const statusCopy = {
   awaiting_payment: {
-    label: "Awaiting payment",
+    label: "Awaiting Payment",
     description: "Please complete the payment to continue.",
     tone: "warning",
   },
-  pending_review: {
-    label: "In review",
-    description: "Our admin is confirming your receipt.",
+  pending_approval: {
+    label: "Pending Approval",
+    description: "Your payment receipt is being reviewed by admin.",
     tone: "info",
   },
-  pending_payment: {
-    label: "Pending",
-    description: "Admin needs another payment proof.",
-    tone: "danger",
+  payment_received: {
+    label: "Payment Received",
+    description: "Payment confirmed. Booking is being processed.",
+    tone: "info",
+  },
+  confirmed: {
+    label: "Confirmed",
+    description: "Booking confirmed. See you at the event!",
+    tone: "success",
   },
   completed: {
     label: "Completed",
-    description: "Booking confirmed. See you at the event!",
+    description: "Event completed. Thank you!",
     tone: "success",
+  },
+  rejected: {
+    label: "Payment Rejected",
+    description: "Please resubmit a valid payment receipt.",
+    tone: "danger",
   },
 };
 
@@ -59,40 +69,43 @@ const BookingHistory = () => {
               description: "",
               tone: "info",
             };
-            const needsPayment = ["awaiting_payment", "pending_payment"].includes(bookingStatus);
+            const needsPayment = ["awaiting_payment", "rejected"].includes(bookingStatus);
+            
             return (
               <article key={booking.id} className="history-card">
                 <div className="card-head">
                   <div>
-                    <h3>{typeof booking.event === 'object' ? JSON.stringify(booking.event) : (booking.event || 'N/A')}</h3>
+                    <h3>{booking.eventType || 'Event Booking'}</h3>
                     <p>
-                      {typeof booking.bookingDate === 'object' ? JSON.stringify(booking.bookingDate) : (booking.bookingDate || 'N/A')} • {typeof booking.bookingTime === 'object' ? JSON.stringify(booking.bookingTime) : (booking.bookingTime || 'N/A')}
+                      {booking.createdAt ? new Date(booking.createdAt).toLocaleDateString() : 'Date N/A'}
                     </p>
                   </div>
                   <span className={`badge ${status.tone}`}>{status.label}</span>
                 </div>
                 <ul>
                   <li>
-                    <span>Guests / table</span>
-                    <strong>
-                      {typeof booking.guestsPerTable === 'object' ? JSON.stringify(booking.guestsPerTable) : (booking.guestsPerTable || 'N/A')} {booking.seatingLabel && `• ${typeof booking.seatingLabel === 'object' ? JSON.stringify(booking.seatingLabel) : booking.seatingLabel}`}
-                    </strong>
+                    <span>Guests</span>
+                    <strong>{booking.numPeople || 'N/A'} people</strong>
                   </li>
                   <li>
                     <span>Main dish</span>
-                    <strong>{typeof booking.mainDish === 'object' ? JSON.stringify(booking.mainDish) : (booking.mainDish || 'N/A')}</strong>
+                    <strong>{booking.foodPackage || 'N/A'}</strong>
                   </li>
                   <li>
                     <span>Sides</span>
-                    <strong>{Array.isArray(booking.sideDishes) ? (booking.sideDishes.join(", ") || "None") : (typeof booking.sideDishes === 'object' ? JSON.stringify(booking.sideDishes) : (booking.sideDishes || 'None'))}</strong>
+                    <strong>{Array.isArray(booking.selectedSides) && booking.selectedSides.length > 0 ? booking.selectedSides.join(", ") : "None"}</strong>
+                  </li>
+                  <li>
+                    <span>Drink</span>
+                    <strong>{booking.drink || "None"}</strong>
                   </li>
                   <li>
                     <span>Dessert</span>
-                    <strong>{typeof booking.dessert === 'object' ? JSON.stringify(booking.dessert) : (booking.dessert || "None")}</strong>
+                    <strong>{booking.dessert || "None"}</strong>
                   </li>
                   <li>
-                    <span>Amount</span>
-                    <strong>MYR {typeof booking.amountDue === 'object' ? JSON.stringify(booking.amountDue) : (booking.amountDue || 'N/A')}</strong>
+                    <span>Total Amount</span>
+                    <strong>RM {booking.totalAmount || booking.amountDue || 'N/A'}</strong>
                   </li>
                 </ul>
                 <p className="status-copy">{status.description}</p>

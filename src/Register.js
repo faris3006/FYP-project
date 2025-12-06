@@ -1,53 +1,20 @@
 import React, { useState } from "react";
+import { useNavigate } from "react-router-dom";
+import "./shared.css";
 import "./Register.css";
 import API_BASE_URL from "./config/api";
 
 const Register = () => {
-  const [form, setForm] = useState({
-    name: "",
-    phone: "",
-    email: "",
-    password: "",
-    confirmPassword: "",
+  const navigate = useNavigate();
+  const [form, setForm] = useState({ 
+    name: "", 
+    phone: "", 
+    email: "", 
+    password: "", 
+    confirmPassword: "" 
   });
-
-  const [errors, setErrors] = useState({});
-  const [loading, setLoading] = useState(false); // optional loading state
-
-  const validate = () => {
-    const errs = {};
-
-    if (!form.name.trim()) errs.name = "Name is required.";
-
-    if (!form.phone.trim()) {
-      errs.phone = "Phone number is required.";
-    } else if (!/^\d{7,15}$/.test(form.phone)) {
-      errs.phone = "Phone must be digits only (7-15 chars).";
-    }
-
-    if (!form.email.trim()) {
-      errs.email = "Email is required.";
-    } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email)) {
-      errs.email = "Invalid email format.";
-    }
-
-    if (!form.password) {
-      errs.password = "Password is required.";
-    } else if (
-      !/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[\W_]).{6,}$/.test(form.password)
-    ) {
-      errs.password =
-        "Password must be 6+ chars, include uppercase, lowercase, number, and special char.";
-    }
-
-    if (!form.confirmPassword) {
-      errs.confirmPassword = "Please confirm your password.";
-    } else if (form.password !== form.confirmPassword) {
-      errs.confirmPassword = "Passwords do not match.";
-    }
-
-    return errs;
-  };
+  const [error, setError] = useState("");
+  const [loading, setLoading] = useState(false);
 
   const handleChange = (e) => {
     setForm({ ...form, [e.target.name]: e.target.value });
@@ -55,116 +22,153 @@ const Register = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    setError("");
 
-    const validationErrors = validate();
-    setErrors(validationErrors);
+    if (!form.name || !form.phone || !form.email || !form.password || !form.confirmPassword) {
+      setError("Please fill in all fields");
+      return;
+    }
 
-    if (Object.keys(validationErrors).length === 0) {
-      setLoading(true);
-      try {
-        const url = `${API_BASE_URL}/api/auth/register`;
-        console.log("Register -> using API URL:", url);
-        const response = await fetch(url, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            name: form.name,
-            phone: form.phone,
-            email: form.email,
-            password: form.password,
-          }),
-        });
+    // Email format validation
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(form.email)) {
+      setError("Please enter a valid email address");
+      return;
+    }
 
-        const data = await response.json();
+    // Phone format validation (Malaysia +60)
+    const phoneRegex = /^\+?60\d{9,10}$/;
+    const cleanPhone = form.phone.replace(/\s|-|\(|\)/g, "");
+    if (!phoneRegex.test(cleanPhone)) {
+      setError("Please enter a valid Malaysian phone number (+60)");
+      return;
+    }
 
-        if (response.ok) {
-          alert("Registration successful! Please check your email to verify your account. If you don't receive the email within 5 minutes, check your spam folder or contact support.");
-          setForm({
-            name: "",
-            phone: "",
-            email: "",
-            password: "",
-            confirmPassword: "",
-          });
-          setErrors({});
-        } else {
-          alert(data.message || "Registration failed");
-        }
-      } catch (error) {
-        alert("Network error, please try again later.");
-        console.error("Register error:", error);
-      } finally {
-        setLoading(false);
+    // Strong password validation
+    if (form.password.length < 8) {
+      setError("Password must be at least 8 characters");
+      return;
+    }
+
+    const hasUpperCase = /[A-Z]/.test(form.password);
+    const hasLowerCase = /[a-z]/.test(form.password);
+    const hasNumber = /[0-9]/.test(form.password);
+    const hasSpecialChar = /[!@#$%^&*]/.test(form.password);
+
+    if (!hasUpperCase || !hasLowerCase || !hasNumber || !hasSpecialChar) {
+      setError("Password must contain uppercase, lowercase, number, and special character (!@#$%^&*)");
+      return;
+    }
+
+    if (form.password !== form.confirmPassword) {
+      setError("Passwords do not match");
+      return;
+    }
+
+    setLoading(true);
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/auth/register`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(form),
+      });
+
+      const data = await response.json();
+
+      if (response.ok) {
+        alert("Registration successful! Please log in.");
+        navigate("/login");
+      } else {
+        setError(data.message || "Registration failed");
       }
+    } catch (err) {
+      setError("Connection error. Please try again.");
+    } finally {
+      setLoading(false);
     }
   };
 
   return (
-    <div className="register-page">
-      <form onSubmit={handleSubmit} noValidate className="register-form">
-        <h2>Sign up</h2>
+    <div className="auth-container">
+      <div className="auth-card">
+        <h1>Create Account</h1>
+        <p className="subtitle">Join EventEase today</p>
 
-        <label>Name</label>
-        <input
-          className={errors.name ? "input error" : "input"}
-          type="text"
-          name="name"
-          value={form.name}
-          onChange={handleChange}
-          placeholder="Your full name"
-        />
-        {errors.name && <p className="input-error">{errors.name}</p>}
+        {error && <div className="error-message">{error}</div>}
 
-        <label>Phone Number</label>
-        <input
-          className={errors.phone ? "input error" : "input"}
-          type="tel"
-          name="phone"
-          value={form.phone}
-          onChange={handleChange}
-          placeholder="Digits only, e.g. 0123456789"
-        />
-        {errors.phone && <p className="input-error">{errors.phone}</p>}
+        <form onSubmit={handleSubmit}>
+          <div className="form-group">
+            <label>Full Name</label>
+            <input
+              type="text"
+              name="name"
+              value={form.name}
+              onChange={handleChange}
+              placeholder="John Doe"
+              required
+            />
+          </div>
 
-        <label>Email</label>
-        <input
-          className={errors.email ? "input error" : "input"}
-          type="email"
-          name="email"
-          value={form.email}
-          onChange={handleChange}
-          placeholder="example@mail.com"
-        />
-        {errors.email && <p className="input-error">{errors.email}</p>}
+          <div className="form-group">
+            <label>Phone Number</label>
+            <input
+              type="tel"
+              name="phone"
+              value={form.phone}
+              onChange={handleChange}
+              placeholder="+60 12-345 6789"
+              required
+            />
+          </div>
 
-        <label>Password</label>
-        <input
-          className={errors.password ? "input error" : "input"}
-          type="password"
-          name="password"
-          value={form.password}
-          onChange={handleChange}
-          placeholder="At least 6 chars, upper, lower, number, special"
-        />
-        {errors.password && <p className="input-error">{errors.password}</p>}
+          <div className="form-group">
+            <label>Email</label>
+            <input
+              type="email"
+              name="email"
+              value={form.email}
+              onChange={handleChange}
+              placeholder="you@example.com"
+              required
+            />
+          </div>
 
-        <label>Confirm Password</label>
-        <input
-          className={errors.confirmPassword ? "input error" : "input"}
-          type="password"
-          name="confirmPassword"
-          value={form.confirmPassword}
-          onChange={handleChange}
-          placeholder="Repeat your password"
-        />
-        {errors.confirmPassword && (
-          <p className="input-error">{errors.confirmPassword}</p>
-        )}
+          <div className="form-group">
+            <label>Password</label>
+            <input
+              type="password"
+              name="password"
+              value={form.password}
+              onChange={handleChange}
+              placeholder="••••••••"
+              required
+            />
+          </div>
 
-        <button type="submit" disabled={loading} className="submit-btn">
-          {loading ? "Registering..." : "Register"}
-        </button>
-      </form>
+          <div className="form-group">
+            <label>Confirm Password</label>
+            <input
+              type="password"
+              name="confirmPassword"
+              value={form.confirmPassword}
+              onChange={handleChange}
+              placeholder="••••••••"
+              required
+            />
+          </div>
+
+          <button type="submit" className="btn-submit" disabled={loading}>
+            {loading ? "Creating account..." : "Sign Up"}
+          </button>
+        </form>
+
+        <p className="auth-footer">
+          Already have an account?{" "}
+          <span onClick={() => navigate("/login")} className="link">
+            Log in
+          </span>
+        </p>
+      </div>
     </div>
   );
 };
