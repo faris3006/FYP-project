@@ -41,8 +41,21 @@ const BookingHistory = () => {
   const [bookings, setBookings] = useState([]);
 
   useEffect(() => {
-    const userBookings = getBookingsByUser();
-    setBookings(userBookings.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt)));
+    const fetchBookings = async () => {
+      const token = localStorage.getItem("token");
+      if (!token) return;
+      try {
+        const data = await getBookingsByUser(token);
+        setBookings(
+          Array.isArray(data)
+            ? data.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
+            : []
+        );
+      } catch (e) {
+        setBookings([]);
+      }
+    };
+    fetchBookings();
   }, []);
 
   return (

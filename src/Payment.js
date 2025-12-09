@@ -8,9 +8,7 @@ import {
   getBookingById,
   upsertBooking,
 } from "./utils/bookingStorage";
-import {
-  saveReceiptBlob,
-} from "./utils/receiptStore";
+import { uploadReceiptFile } from "./utils/receiptStore";
 
 const MAX_FILE_SIZE = 20 * 1024 * 1024;
 
@@ -20,8 +18,7 @@ const Payment = () => {
   const bookingFromState = location.state?.bookingId;
   const query = new URLSearchParams(location.search);
   const queryId = query.get("bookingId");
-  const storedId = localStorage.getItem("ee_active_booking_id");
-  const bookingId = bookingFromState || queryId || storedId;
+  const bookingId = bookingFromState || queryId;
 
   const [booking, setBooking] = useState(null);
   const [filePreview, setFilePreview] = useState("");
@@ -33,38 +30,18 @@ const Payment = () => {
 
   // Load booking data on mount
   useEffect(() => {
-    // First try to get from bookingId
-    if (bookingId) {
-      const latest = getBookingById(bookingId);
-      if (latest) {
-        console.log('Loaded booking from ID:', latest);
-        setBooking(latest);
-        return;
+    const fetchBooking = async () => {
+      if (!bookingId) return;
+      const token = localStorage.getItem("token");
+      if (!token) return;
+      try {
+        const data = await getBookingById(bookingId, token);
+        setBooking(data);
+      } catch (e) {
+        setError("Failed to load booking. Please try again.");
       }
-    }
-
-    // Then try localStorage from booking form
-    try {
-      const data = localStorage.getItem('bookingData');
-      console.log('bookingData from localStorage:', data);
-      if (data) {
-        const bookingDataFromForm = JSON.parse(data);
-        console.log('Parsed booking data:', bookingDataFromForm);
-        setBooking({
-          id: 'temp-' + Date.now(),
-          eventType: bookingDataFromForm.eventType,
-          numPeople: bookingDataFromForm.numPeople,
-          foodPackage: bookingDataFromForm.foodPackage,
-          selectedSides: bookingDataFromForm.selectedSides,
-          drink: bookingDataFromForm.drink,
-          dessert: bookingDataFromForm.dessert,
-          specialRequests: bookingDataFromForm.specialRequests,
-          payment: {},
-        });
-      }
-    } catch (e) {
-      console.error('Error loading booking data:', e);
-    }
+    };
+    fetchBooking();
   }, [bookingId]);
 
   if (!booking) {
@@ -152,36 +129,22 @@ const Payment = () => {
     setError("");
     setSuccess("");
 
-    if (!selectedFile && !filePreview) {
+    if (!selectedFile) {
       setError("Please upload a receipt");
       return;
     }
 
     setIsSubmitting(true);
     try {
-      // Get user info from token
       const token = localStorage.getItem("token");
-      let userEmail = "";
-      let userId = "";
-      
-      if (token) {
-        try {
-          const decoded = jwtDecode(token);
-          userEmail = decoded.email || decoded.userEmail || "";
-          userId = decoded.userId || decoded.id || userEmail;
-        } catch (e) {
-          console.error("Error decoding token:", e);
-        }
-      }
+      if (!token) throw new Error("Not authenticated");
 
-      if (selectedFile) {
-        await saveReceiptBlob(booking.id, selectedFile);
-      }
+      // Upload receipt file to backend
+      await uploadReceiptFile(booking.id, selectedFile, token);
 
+      // Update booking status to pending_approval and add payment info
       const updated = {
         ...booking,
-        userId: userId || booking.id,
-        userEmail: userEmail,
         payment: {
           amountPaid: totalPrice,
           receiptName,
@@ -190,18 +153,11 @@ const Payment = () => {
         },
         status: "pending_approval",
         totalAmount: totalPrice,
-        createdAt: booking.createdAt || new Date().toISOString(),
         updatedAt: new Date().toISOString(),
       };
+      await upsertBooking(updated, token);
 
-      console.log("Saving booking:", updated);
-      upsertBooking(updated);
-      
-      // Clear the temporary booking data
-      localStorage.removeItem('bookingData');
-      
       setSuccess("Receipt uploaded successfully! Your booking is awaiting admin approval.");
-      
       setTimeout(() => {
         navigate("/booking-history");
       }, 2000);
