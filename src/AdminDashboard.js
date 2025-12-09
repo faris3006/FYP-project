@@ -1,36 +1,16 @@
 import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { readBookings, updateBookingStatus } from "./utils/bookingStorage";
-import { getReceiptObjectURL } from "./utils/receiptStore";
+import { updateBookingStatus } from "./utils/bookingStorage";
 import API_BASE_URL from "./config/api";
 
-const transformLocalBookings = localBookings =>
-  localBookings.map(booking => ({
-    _id: booking.id,
-    userId: {
-      name: booking.userEmail || booking.userId || "Local User",
-      email: booking.userEmail || "N/A",
-    },
-    // For history views we treat createdAt as the true "submitted at" moment.
-    bookingDate: booking.createdAt
-      ? booking.createdAt
-      : booking.bookingDate
-        ? new Date(booking.bookingDate).toISOString()
-        : null,
-    paymentStatus: booking.status === "completed",
-    event: booking.event,
-    status: booking.status,
-    amountDue: booking.amountDue,
-    payment: booking.payment,
-  }));
+
 
 const AdminDashboard = () => {
   const [users, setUsers] = useState([]);
   const [bookings, setBookings] = useState([]);
   const [loadingUsers, setLoadingUsers] = useState(true);
   const [loadingBookings, setLoadingBookings] = useState(true);
-  const [localQueue, setLocalQueue] = useState([]);
-  const [isLocalBookings, setIsLocalBookings] = useState(false);
+
   const [error, setError] = useState("");
   const navigate = useNavigate();
   const token = localStorage.getItem("token");
@@ -66,7 +46,7 @@ const AdminDashboard = () => {
       })
       .finally(() => setLoadingUsers(false));
 
-    // Fetch bookings from API (with fallback to local storage)
+    // Fetch bookings from API only
     fetch(`${API_BASE_URL}/api/admin/bookings`, {
       headers: { Authorization: `Bearer ${token}` },
     })
@@ -82,50 +62,18 @@ const AdminDashboard = () => {
         } else {
           setBookings([]);
         }
-        setIsLocalBookings(false);
         setError(""); // Clear error on success
       })
-      .catch((err) => {
-        // Fallback to local storage bookings when API fails
-        const localBookings = readBookings();
-        // Transform local bookings to match API format
-        const transformedBookings = transformLocalBookings(localBookings);
-        setBookings(transformedBookings);
-        setIsLocalBookings(true);
-        setError(""); // Clear error since we have local data
+      .catch(() => {
+        setBookings([]);
+        setError("Failed to fetch bookings from backend.");
       })
       .finally(() => setLoadingBookings(false));
-
-    const refreshLocal = () => {
-      setLocalQueue(readBookings());
-    };
-    refreshLocal();
-    window.addEventListener("storage", refreshLocal);
-    return () => window.removeEventListener("storage", refreshLocal);
   }, [token, navigate]);
 
 
 
-  const handleLocalStatus = (bookingId, status) => {
-    const updated = updateBookingStatus(bookingId, status);
-    if (updated) {
-      const localBookings = readBookings();
-      setLocalQueue(localBookings);
-      if (isLocalBookings) {
-        setBookings(transformLocalBookings(localBookings));
-      } else {
-        // Optimistic UI update for API-loaded bookings
-        setBookings(prev =>
-          prev.map(booking =>
-            booking._id === bookingId || booking.id === bookingId
-              ? { ...booking, status, paymentStatus: status === "completed" }
-              : booking
-          )
-        );
-      }
-      alert(`Booking marked as ${status}`);
-    }
-  };
+
 
   const normalizeStatus = status =>
     (status || "")
@@ -134,21 +82,8 @@ const AdminDashboard = () => {
       .toLowerCase()
       .replace(/\s+/g, "_");
 
-  // Combine API bookings with any locally stored bookings so that once an
-  // admin updates the status (completed / pending) it always appears in
-  // Booking History, even if the backend doesn't yet return that booking.
-  const localForHistory = transformLocalBookings(localQueue);
-
-  const existingHistoryIds = new Set(
-    bookings.map(b => (b._id || b.id || "").toString())
-  );
-
-  const historyBookings = [
-    ...bookings,
-    ...localForHistory.filter(
-      b => !existingHistoryIds.has((b._id || b.id || "").toString())
-    ),
-  ];
+  // Only use backend bookings
+  const historyBookings = bookings;
 
   const logout = () => {
     localStorage.removeItem("token");
@@ -310,112 +245,7 @@ const AdminDashboard = () => {
         )}
       </section>
 
-      <section>
-        <h2>Receipt review queue (local)</h2>
-        {localQueue.filter(b =>
-          ["awaiting_payment", "pending_review", "pending_payment", "pending_approval"].includes(b.status)
-        ).length === 0 ? (
-          <p>No local bookings yet.</p>
-        ) : (
-          <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
-            {localQueue
-              .filter(b =>
-                ["awaiting_payment", "pending_review", "pending_payment", "pending_approval"].includes(b.status)
-              )
-              .map(booking => (
-              <div
-                key={booking.id}
-                style={{
-                  border: "1px solid rgba(124,93,255,0.25)",
-                  borderRadius: 18,
-                  padding: 18,
-                  background: "#0f152a",
-                  boxShadow: "0 25px 60px rgba(0, 0, 0, 0.5)",
-                }}
-              >
-                <div style={{ display: "flex", justifyContent: "space-between", gap: 12, marginBottom: 12 }}>
-                  <div>
-                    <h3 style={{ margin: "0 0 6px" }}>
-                      {booking.eventType || booking.event || "Event Booking"}
-                    </h3>
-                    <p style={{ margin: 0, color: "rgba(255,255,255,0.7)" }}>
-                      User: {booking.userEmail || booking.userId || "Unknown"}
-                    </p>
-                    <p style={{ margin: "4px 0 0", fontWeight: 600, color: "#ffa500" }}>
-                      Status: {booking.status?.replace(/_/g, " ").toUpperCase() || "PENDING"}
-                    </p>
-                  </div>
-                  {booking.payment?.receiptStored && (
-                    <button
-                      style={{
-                        alignSelf: "flex-start",
-                        color: "#ff8c00",
-                        fontWeight: 600,
-                        background: "none",
-                        border: "none",
-                        cursor: "pointer",
-                        padding: "8px 12px",
-                        borderRadius: "8px",
-                        backgroundColor: "rgba(255, 140, 0, 0.15)",
-                      }}
-                      onClick={async () => {
-                        const url = await getReceiptObjectURL(booking.id);
-                        if (!url) {
-                          alert("Receipt unavailable.");
-                          return;
-                        }
-                        const newWindow = window.open(url, "_blank");
-                        if (!newWindow) {
-                          alert("Allow pop-ups to preview receipt.");
-                        }
-                        setTimeout(() => URL.revokeObjectURL(url), 60000);
-                      }}
-                    >
-                      📄 View Receipt
-                    </button>
-                  )}
-                </div>
-
-                {/* Booking Details */}
-                <div style={{ 
-                  backgroundColor: "rgba(255,255,255,0.02)", 
-                  padding: "12px", 
-                  borderRadius: "10px",
-                  marginBottom: "12px",
-                  fontSize: "0.9rem"
-                }}>
-                  <p style={{ margin: "4px 0" }}><strong>Guests:</strong> {booking.numPeople || "N/A"} people</p>
-                  <p style={{ margin: "4px 0" }}><strong>Food Package:</strong> {booking.foodPackage || "N/A"}</p>
-                  {booking.selectedSides && booking.selectedSides.length > 0 && (
-                    <p style={{ margin: "4px 0" }}><strong>Sides:</strong> {booking.selectedSides.join(", ")}</p>
-                  )}
-                  <p style={{ margin: "4px 0" }}><strong>Drink:</strong> {booking.drink || "N/A"}</p>
-                  <p style={{ margin: "4px 0" }}><strong>Dessert:</strong> {booking.dessert || "N/A"}</p>
-                </div>
-
-                <p style={{ margin: "8px 0 4px", fontSize: "1.1rem", fontWeight: "700", color: "#667eea" }}>
-                  Total Amount: <strong>RM {booking.totalAmount ?? booking.payment?.amountPaid ?? booking.amountDue}</strong>
-                </p>
-
-                <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
-                  <button
-                    style={buttonStyle}
-                    onClick={() => handleLocalStatus(booking.id, "confirmed")}
-                  >
-                    ✅ Payment Success
-                  </button>
-                  <button
-                    style={{ ...buttonStyle, backgroundColor: "#d9534f" }}
-                    onClick={() => handleLocalStatus(booking.id, "pending_payment")}
-                  >
-                    ⏳ Pending Payment
-                  </button>
-                </div>
-              </div>
-              ))}
-          </div>
-        )}
-      </section>
+      {/* Removed local receipt review queue. All data comes from backend. */}
     </div>
   );
 };
