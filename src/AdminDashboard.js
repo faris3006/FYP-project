@@ -1,6 +1,5 @@
 import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { updateBookingStatus } from "./utils/bookingStorage";
 import API_BASE_URL from "./config/api";
 
 

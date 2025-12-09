@@ -1,14 +1,13 @@
 import React, { useEffect, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
-import { jwtDecode } from "jwt-decode";
 import "./shared.css";
 import "./Payment.css";
 import qrImage from "./assets/QR payment.jpeg";
 import {
-  getBookingById,
   upsertBooking,
 } from "./utils/bookingStorage";
 import { uploadReceiptFile } from "./utils/receiptStore";
+import API_BASE_URL from "./config/api";
 
 const MAX_FILE_SIZE = 20 * 1024 * 1024;
 
@@ -27,20 +26,49 @@ const Payment = () => {
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
 
   // Load booking data on mount
   useEffect(() => {
     const fetchBooking = async () => {
-      if (!bookingId) return;
+      setIsLoading(true);
+      setError("");
+      
+      if (!bookingId) {
+        setError("No booking ID provided. Please create a new booking.");
+        setIsLoading(false);
+        return;
+      }
+      
       const token = localStorage.getItem("token");
-      if (!token) return;
+      if (!token) {
+        setError("You must be logged in to make a payment.");
+        setIsLoading(false);
+        return;
+      }
+      
       try {
-        const data = await getBookingById(bookingId, token);
+        // Fetch booking from backend
+        const response = await fetch(`${API_BASE_URL}/api/bookings/${bookingId}`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        
+        if (!response.ok) {
+          throw new Error("Booking not found or access denied.");
+        }
+        
+        const data = await response.json();
         setBooking(data);
+        setError("");
       } catch (e) {
-        setError("Failed to load booking. Please try again.");
+        console.error("Failed to fetch booking:", e);
+        setError(e.message || "Failed to load booking. Please try again.");
+        setBooking(null);
+      } finally {
+        setIsLoading(false);
       }
     };
+    
     fetchBooking();
   }, [bookingId]);
 
@@ -49,10 +77,37 @@ const Payment = () => {
       <div className="payment-page">
         <div className="booking-layout">
           <div className="field-card error-card">
-            <p>No booking found. Please start a new booking.</p>
-            <button className="submit-booking" onClick={() => navigate("/booking")}>
-              Back to Booking
-            </button>
+            {isLoading ? (
+              <>
+                <p>Loading booking details...</p>
+              </>
+            ) : (
+              <>
+                <p style={{ color: '#c33', marginBottom: '16px' }}>
+                  <strong>⚠ {error || "No booking found"}</strong>
+                </p>
+                <p style={{ fontSize: '0.9rem', marginBottom: '16px' }}>
+                  If you believe this is a mistake, please try creating a new booking. Your payment data will not be lost.
+                </p>
+                <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
+                  <button className="submit-booking" onClick={() => navigate("/booking")}>
+                    Create New Booking
+                  </button>
+                  <button 
+                    className="submit-booking" 
+                    style={{ backgroundColor: '#667eea' }}
+                    onClick={() => {
+                      setError("");
+                      setIsLoading(true);
+                      // Retry fetching
+                      window.location.reload();
+                    }}
+                  >
+                    Retry
+                  </button>
+                </div>
+              </>
+            )}
           </div>
         </div>
       </div>
@@ -140,7 +195,7 @@ const Payment = () => {
       if (!token) throw new Error("Not authenticated");
 
       // Upload receipt file to backend
-      await uploadReceiptFile(booking.id, selectedFile, token);
+      await uploadReceiptFile(booking.id || booking._id, selectedFile, token);
 
       // Update booking status to pending_approval and add payment info
       const updated = {

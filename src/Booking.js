@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import './Booking.css';
+import API_BASE_URL from './config/api';
 
 function Booking() {
   const navigate = useNavigate();
@@ -12,6 +13,8 @@ function Booking() {
   const [drink, setDrink] = useState('');
   const [dessert, setDessert] = useState('');
   const [specialRequests, setSpecialRequests] = useState('');
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [error, setError] = useState('');
 
   const foodOptions = {
     'Grilled Chicken with 1 Side': 1,
@@ -43,28 +46,65 @@ function Booking() {
     }
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
+    setError('');
+    
     if (!eventType || !numPeople || !foodPackage || !drink || !dessert) {
-      alert('Please fill in all required fields');
+      setError('Please fill in all required fields');
       return;
     }
-    const bookingData = {
-      eventType,
-      numPeople,
-      foodPackage,
-      selectedSides,
-      drink,
-      dessert,
-      specialRequests,
-    };
-    console.log('Booking submitted:', bookingData);
-    
-    // Store booking data in localStorage so Payment page can access it
-    localStorage.setItem('bookingData', JSON.stringify(bookingData));
-    
-    // Navigate to Payment page
-    navigate('/payment');
+
+    setIsSubmitting(true);
+    try {
+      const token = localStorage.getItem('token');
+      if (!token) {
+        setError('You must be logged in to make a booking');
+        return;
+      }
+
+      const bookingData = {
+        eventType,
+        numPeople: parseInt(numPeople),
+        foodPackage,
+        selectedSides,
+        drink,
+        dessert,
+        specialRequests,
+      };
+
+      // Submit booking to backend
+      const response = await fetch(`${API_BASE_URL}/api/bookings`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify(bookingData),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || 'Failed to create booking');
+      }
+
+      const result = await response.json();
+      const bookingId = result.id || result._id;
+
+      if (!bookingId) {
+        throw new Error('No booking ID received from backend');
+      }
+
+      console.log('Booking created successfully:', bookingId);
+      
+      // Navigate to Payment page with booking ID
+      navigate(`/payment?bookingId=${bookingId}`);
+    } catch (err) {
+      console.error('Booking submission error:', err);
+      setError(err.message || 'Failed to create booking. Please try again.');
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
@@ -257,9 +297,27 @@ function Booking() {
             </ul>
           </div>
 
+          {/* Error Message */}
+          {error && (
+            <div style={{
+              padding: '12px 16px',
+              backgroundColor: '#fee',
+              color: '#c33',
+              borderRadius: '8px',
+              marginBottom: '16px',
+              fontSize: '0.9rem'
+            }}>
+              ✕ {error}
+            </div>
+          )}
+
           {/* Submit Button */}
-          <button type="submit" className="submit-booking">
-            Complete Booking
+          <button 
+            type="submit" 
+            className="submit-booking"
+            disabled={isSubmitting}
+          >
+            {isSubmitting ? 'Creating Booking...' : 'Complete Booking'}
           </button>
         </div>
       </form>
