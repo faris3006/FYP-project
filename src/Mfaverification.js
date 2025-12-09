@@ -12,17 +12,23 @@ const MfaVerification = () => {
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const [email, setEmail] = useState("");
+  const [userId, setUserId] = useState("");
 
   useEffect(() => {
-    // Try to get email from URL params first, then localStorage as fallback
+    // Try to get email and userId from URL params first, then localStorage as fallback
     const emailParam = searchParams.get("email");
+    const userIdParam = searchParams.get("userId");
     const storedEmail = localStorage.getItem("mfaEmail");
+    const storedUserId = localStorage.getItem("mfaUserId");
     
     console.log("MFA page loaded.");
     console.log("  - emailParam from URL:", emailParam);
+    console.log("  - userIdParam from URL:", userIdParam);
     console.log("  - storedEmail from localStorage:", storedEmail);
+    console.log("  - storedUserId from localStorage:", storedUserId);
     
     let resolvedEmail = null;
+    let resolvedUserId = null;
     
     if (emailParam) {
       resolvedEmail = decodeURIComponent(emailParam);
@@ -35,6 +41,18 @@ const MfaVerification = () => {
     } else {
       console.log("  - No email found. Setting error.");
       setError("Invalid MFA session. Please log in again.");
+    }
+
+    if (userIdParam) {
+      resolvedUserId = decodeURIComponent(userIdParam);
+      console.log("  - Using userId from URL:", resolvedUserId);
+      setUserId(resolvedUserId);
+    } else if (storedUserId) {
+      resolvedUserId = storedUserId;
+      console.log("  - Using userId from localStorage:", resolvedUserId);
+      setUserId(resolvedUserId);
+    } else {
+      console.log("  - No userId found.");
     }
   }, [searchParams]);
 
@@ -52,13 +70,19 @@ const MfaVerification = () => {
       return;
     }
 
+    if (!userId) {
+      setError("User ID missing. Please log in again.");
+      return;
+    }
+
     setLoading(true);
     try {
-      const payload = { email, mfaCode: code };
+      const payload = { email, userId, mfaCode: code };
       
       console.log("Sending MFA verification request with payload:", payload);
-      console.log("Email value:", email);
-      console.log("Code value:", code);
+      console.log("  - Email value:", email);
+      console.log("  - UserId value:", userId);
+      console.log("  - Code value:", code);
 
       const response = await fetch(`${API_BASE_URL}/api/auth/verify-mfa`, {
         method: "POST",
@@ -73,6 +97,7 @@ const MfaVerification = () => {
       if (response.ok && data.token) {
         localStorage.setItem("token", data.token);
         localStorage.removeItem("mfaEmail");
+        localStorage.removeItem("mfaUserId");
         const user = jwtDecode(data.token);
         console.log("MFA verification successful. User role:", user.role);
         navigate(user.role === "admin" ? "/admin" : "/");
