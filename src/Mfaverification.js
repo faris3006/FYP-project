@@ -18,8 +18,10 @@ const MfaVerification = () => {
     const emailParam = searchParams.get("email");
     const storedEmail = localStorage.getItem("mfaEmail");
     
+    console.log("MFA page loaded. emailParam:", emailParam, "storedEmail:", storedEmail);
+    
     if (emailParam) {
-      setEmail(emailParam);
+      setEmail(decodeURIComponent(emailParam));
     } else if (storedEmail) {
       setEmail(storedEmail);
     } else {
@@ -43,10 +45,17 @@ const MfaVerification = () => {
 
     setLoading(true);
     try {
+      const payload = { email, mfaCode: code };
+      
+      console.log("Sending MFA verification with:", {
+        email: email ? "present" : "missing",
+        mfaCode: code ? "present" : "missing",
+      });
+
       const response = await fetch(`${API_BASE_URL}/api/auth/verify-mfa`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, mfaCode: code }),
+        body: JSON.stringify(payload),
       });
 
       const data = await response.json();
@@ -55,11 +64,13 @@ const MfaVerification = () => {
         localStorage.setItem("token", data.token);
         localStorage.removeItem("mfaEmail");
         const user = jwtDecode(data.token);
+        console.log("MFA verification successful. User role:", user.role);
         navigate(user.role === "admin" ? "/admin" : "/");
       } else {
-        setError("Invalid MFA code");
+        setError(data.message || "Invalid MFA code");
       }
     } catch (err) {
+      console.error("MFA verification error:", err);
       setError("Connection error. Please try again.");
     } finally {
       setLoading(false);

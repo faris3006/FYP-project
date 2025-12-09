@@ -33,7 +33,10 @@ const Login = () => {
 
       if (response.ok) {
         if (data.mfaRequired) {
-          navigate(`/mfa-verification?userId=${data.userId}`);
+          // Store email for MFA verification page
+          localStorage.setItem("mfaEmail", email);
+          console.log("MFA required. Email stored:", email);
+          navigate(`/mfa-verification?email=${encodeURIComponent(email)}`);
         } else {
           localStorage.setItem("token", data.token);
           const user = jwtDecode(data.token);
