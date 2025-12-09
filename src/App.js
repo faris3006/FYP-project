@@ -5,6 +5,8 @@ import Login from "./Login";
 import Register from "./Register";
 import MfaVerification from "./Mfaverification";
 import VerifyEmail from "./VerifyEmail";
+import ForgotPassword from "./ForgotPassword";
+import ResetPassword from "./ResetPassword";
 import BookingHistory from "./BookingHistory";
 import AdminDashboard from "./AdminDashboard";
 import Booking from "./Booking";
@@ -29,6 +31,8 @@ function App() {
           <Route path="/register" element={<Register />} />
           <Route path="/mfa-verification" element={<MfaVerification />} /> {/* MFA route */}
           <Route path="/api/auth/verify-email" element={<VerifyEmail />} /> {/* Email verification route */}
+          <Route path="/forgot-password" element={<ForgotPassword />} />
+          <Route path="/reset-password" element={<ResetPassword />} />
           <Route path="/admin" element={<AdminDashboard />} />
           <Route path="/booking" element={<Booking />} />
           <Route path="/payment" element={<Payment />} />
