@@ -67,13 +67,27 @@ const Register = () => {
 
     setLoading(true);
     try {
+      const payload = {
+        name: form.name,
+        phone: form.phone,
+        email: form.email,
+        password: form.password,
+        confirmPassword: form.confirmPassword,
+      };
+
+      console.log("Sending registration request to:", `${API_BASE_URL}/api/auth/register`);
+      console.log("Payload:", payload);
+
       const response = await fetch(`${API_BASE_URL}/api/auth/register`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(form),
+        body: JSON.stringify(payload),
       });
 
       const data = await response.json();
+
+      console.log("Registration response status:", response.status);
+      console.log("Registration response data:", data);
 
       if (response.ok) {
         alert("Registration successful! Please log in.");
@@ -82,6 +96,7 @@ const Register = () => {
         setError(data.message || "Registration failed");
       }
     } catch (err) {
+      console.error("Registration error:", err);
       setError("Connection error. Please try again.");
     } finally {
       setLoading(false);

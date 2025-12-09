@@ -13,6 +13,10 @@ const VerifyEmail = () => {
       // Extract token from URL query parameters
       const token = searchParams.get("token");
 
+      console.log("Email verification page loaded");
+      console.log("  - Token from URL:", token ? `${token.substring(0, 20)}...` : "missing");
+      console.log("  - API_BASE_URL:", API_BASE_URL);
+
       if (!token) {
         setStatus("error");
         setMessage("Invalid verification link. No token provided.");
@@ -20,13 +24,20 @@ const VerifyEmail = () => {
       }
 
       try {
+        const verifyUrl = `${API_BASE_URL}/api/auth/verify-email?token=${token}`;
+        console.log("Sending verification request to:", verifyUrl);
+
         // Call backend API to verify email
-        const response = await fetch(`${API_BASE_URL}/api/auth/verify-email?token=${token}`, {
+        const response = await fetch(verifyUrl, {
           method: "GET",
           headers: { "Content-Type": "application/json" },
         });
 
+        console.log("Verification response status:", response.status);
+
         const data = await response.json();
+
+        console.log("Verification response data:", data);
 
         if (response.ok) {
           setStatus("success");
