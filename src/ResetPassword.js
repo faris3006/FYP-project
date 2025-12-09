@@ -52,6 +52,11 @@ const ResetPassword = () => {
       return;
     }
 
+    if (!password || !confirmPassword) {
+      setError("Please fill in both password fields");
+      return;
+    }
+
     const validationError = validatePassword();
     if (validationError) {
       setError(validationError);
@@ -60,10 +65,22 @@ const ResetPassword = () => {
 
     setLoading(true);
     try {
+      const payload = {
+        token,
+        password,
+        confirmPassword,
+      };
+
+      console.log("Sending reset-password request with:", {
+        token: token ? "present" : "missing",
+        password: password ? "present" : "missing",
+        confirmPassword: confirmPassword ? "present" : "missing",
+      });
+
       const response = await fetch(`${API_BASE_URL}/api/auth/reset-password`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ token, password }),
+        body: JSON.stringify(payload),
       });
 
       const data = await response.json();
@@ -74,10 +91,15 @@ const ResetPassword = () => {
             "Password updated. Log in with your new password and complete MFA verification."
         );
         setTimeout(() => navigate("/login"), 1800);
+      } else if (response.status === 404) {
+        setError(
+          "Reset endpoint unavailable. Please verify the backend is running."
+        );
       } else {
         setError(data.message || "Reset link may be invalid or expired.");
       }
     } catch (err) {
+      console.error("Reset password error:", err);
       setError("Connection error. Please try again.");
     } finally {
       setLoading(false);
