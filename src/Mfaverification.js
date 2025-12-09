@@ -11,13 +11,21 @@ const MfaVerification = () => {
   const [code, setCode] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
-  const userId = searchParams.get("userId");
+  const [email, setEmail] = useState("");
 
   useEffect(() => {
-    if (!userId) {
-      setError("Invalid MFA session");
+    // Try to get email from URL params first, then localStorage as fallback
+    const emailParam = searchParams.get("email");
+    const storedEmail = localStorage.getItem("mfaEmail");
+    
+    if (emailParam) {
+      setEmail(emailParam);
+    } else if (storedEmail) {
+      setEmail(storedEmail);
+    } else {
+      setError("Invalid MFA session. Please log in again.");
     }
-  }, [userId]);
+  }, [searchParams]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -28,18 +36,24 @@ const MfaVerification = () => {
       return;
     }
 
+    if (!email) {
+      setError("Email missing. Please log in again.");
+      return;
+    }
+
     setLoading(true);
     try {
       const response = await fetch(`${API_BASE_URL}/api/auth/verify-mfa`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ userId, mfaCode: code }),
+        body: JSON.stringify({ email, mfaCode: code }),
       });
 
       const data = await response.json();
 
       if (response.ok && data.token) {
         localStorage.setItem("token", data.token);
+        localStorage.removeItem("mfaEmail");
         const user = jwtDecode(data.token);
         navigate(user.role === "admin" ? "/admin" : "/");
       } else {
@@ -56,7 +70,7 @@ const MfaVerification = () => {
     <div className="auth-container">
       <div className="auth-card">
         <h1>Verify Code</h1>
-        <p className="subtitle">Enter the MFA code sent to your email</p>
+        <p className="subtitle">Enter MFA code sent to your email</p>
 
         {error && <div className="error-message">{error}</div>}
 

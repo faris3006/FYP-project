@@ -45,8 +45,9 @@ const ForgotPassword = () => {
       if (response.ok) {
         setSuccess(
           data.message ||
-            "If that email is registered, we've sent password reset instructions. After resetting, you'll log in and verify with your MFA code."
+            "Check your email for reset link"
         );
+        setEmail("");
       } else if (response.status === 404) {
         setError(
           "Password reset endpoint is unavailable. Please verify the backend route or contact support."

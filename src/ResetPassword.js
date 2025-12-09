@@ -23,20 +23,16 @@ const ResetPassword = () => {
   }, [token]);
 
   const validatePassword = () => {
-    if (password.length < 8) {
-      return "Password must be at least 8 characters";
+    if (!password || !confirmPassword) {
+      return "Please provide all required fields.";
     }
-    const hasUpperCase = /[A-Z]/.test(password);
-    const hasLowerCase = /[a-z]/.test(password);
-    const hasNumber = /[0-9]/.test(password);
-    const hasSpecialChar = /[!@#$%^&*]/.test(password);
 
-    if (!hasUpperCase || !hasLowerCase || !hasNumber || !hasSpecialChar) {
-      return "Include uppercase, lowercase, number, and special character (!@#$%^&*)";
+    if (password.length < 6) {
+      return "Password must be at least 6 characters long.";
     }
 
     if (password !== confirmPassword) {
-      return "Passwords do not match";
+      return "Passwords do not match.";
     }
 
     return "";
@@ -67,13 +63,13 @@ const ResetPassword = () => {
     try {
       const payload = {
         token,
-        password,
+        newPassword: password,
         confirmPassword,
       };
 
       console.log("Sending reset-password request with:", {
         token: token ? "present" : "missing",
-        password: password ? "present" : "missing",
+        newPassword: password ? "present" : "missing",
         confirmPassword: confirmPassword ? "present" : "missing",
       });
 
@@ -96,11 +92,11 @@ const ResetPassword = () => {
           "Reset endpoint unavailable. Please verify the backend is running."
         );
       } else {
-        setError(data.message || "Reset link may be invalid or expired.");
+        setError(data.message || "Invalid or expired reset token.");
       }
     } catch (err) {
       console.error("Reset password error:", err);
-      setError("Connection error. Please try again.");
+      setError("Server error during password reset");
     } finally {
       setLoading(false);
     }
@@ -120,7 +116,7 @@ const ResetPassword = () => {
 
         <form onSubmit={handleSubmit} className="reset-form">
           <div className="form-group">
-            <label>New password</label>
+            <label>New Password</label>
             <div className="password-input-wrapper">
               <input
                 type={showPassword ? "text" : "password"}
@@ -142,7 +138,7 @@ const ResetPassword = () => {
           </div>
 
           <div className="form-group">
-            <label>Confirm password</label>
+            <label>Confirm Password</label>
             <div className="password-input-wrapper">
               <input
                 type={showPassword ? "text" : "password"}
@@ -157,7 +153,7 @@ const ResetPassword = () => {
           </div>
 
           <div className="password-rules">
-            • At least 8 characters · Upper + lower · Number · Special (!@#$%^&*)
+            • At least 6 characters · Passwords must match
           </div>
 
           <button type="submit" className="btn-submit" disabled={loading || !token}>
