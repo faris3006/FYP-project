@@ -18,13 +18,22 @@ const MfaVerification = () => {
     const emailParam = searchParams.get("email");
     const storedEmail = localStorage.getItem("mfaEmail");
     
-    console.log("MFA page loaded. emailParam:", emailParam, "storedEmail:", storedEmail);
+    console.log("MFA page loaded.");
+    console.log("  - emailParam from URL:", emailParam);
+    console.log("  - storedEmail from localStorage:", storedEmail);
+    
+    let resolvedEmail = null;
     
     if (emailParam) {
-      setEmail(decodeURIComponent(emailParam));
+      resolvedEmail = decodeURIComponent(emailParam);
+      console.log("  - Using email from URL:", resolvedEmail);
+      setEmail(resolvedEmail);
     } else if (storedEmail) {
-      setEmail(storedEmail);
+      resolvedEmail = storedEmail;
+      console.log("  - Using email from localStorage:", resolvedEmail);
+      setEmail(resolvedEmail);
     } else {
+      console.log("  - No email found. Setting error.");
       setError("Invalid MFA session. Please log in again.");
     }
   }, [searchParams]);
@@ -47,10 +56,9 @@ const MfaVerification = () => {
     try {
       const payload = { email, mfaCode: code };
       
-      console.log("Sending MFA verification with:", {
-        email: email ? "present" : "missing",
-        mfaCode: code ? "present" : "missing",
-      });
+      console.log("Sending MFA verification request with payload:", payload);
+      console.log("Email value:", email);
+      console.log("Code value:", code);
 
       const response = await fetch(`${API_BASE_URL}/api/auth/verify-mfa`, {
         method: "POST",
@@ -59,6 +67,8 @@ const MfaVerification = () => {
       });
 
       const data = await response.json();
+
+      console.log("MFA verification response:", data);
 
       if (response.ok && data.token) {
         localStorage.setItem("token", data.token);
