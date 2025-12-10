@@ -4,6 +4,7 @@ import "./shared.css";
 import "./Payment.css";
 import qrImage from "./assets/QR payment.jpeg";
 import { uploadReceiptFile } from "./utils/receiptStore";
+import { updateBookingStatus } from "./utils/bookingStorage";
 import API_BASE_URL from "./config/api";
 
 const MAX_FILE_SIZE = 20 * 1024 * 1024;
@@ -188,25 +189,14 @@ const Payment = () => {
       console.log("Receipt uploaded:", uploadResponse);
 
       // Update booking payment status via backend endpoint
-      const updateResponse = await fetch(
-        `${API_BASE_URL}/api/bookings/${booking.id || booking._id}/payment-status`,
-        {
-          method: "PUT",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${token}`,
-          },
-          body: JSON.stringify({
-            paymentStatus: "pending_approval",
-            amountPaid: totalAmount,
-            receiptFileName: receiptName,
-          }),
-        }
+      const bookingId = booking.id || booking._id;
+      const updateResponse = await updateBookingStatus(
+        bookingId,
+        "pending_approval",
+        token
       );
 
-      if (!updateResponse.ok) {
-        throw new Error("Failed to update payment status");
-      }
+      console.log("Payment status updated:", updateResponse);
 
       setSuccess("Receipt uploaded successfully! Your booking is awaiting admin approval.");
       setTimeout(() => {
