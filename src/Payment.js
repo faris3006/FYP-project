@@ -2,6 +2,7 @@ import React, { useEffect, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import "./shared.css";
 import "./Payment.css";
+import qrImage from "./assets/QR payment.jpeg";
 import { uploadReceiptFile } from "./utils/receiptStore";
 import API_BASE_URL from "./config/api";
 
@@ -136,7 +137,6 @@ const Payment = () => {
 
   // Use backend totalAmount directly - NO CALCULATIONS
   const totalAmount = booking?.totalAmount || "0.00";
-  const qrCode = booking?.qrCode || null;
   const serviceName = booking?.serviceName || "Service";
   const scheduledDate = booking?.scheduledDate || null;
   const notes = booking?.notes || "";
@@ -234,11 +234,7 @@ const Payment = () => {
           <div className="field-card">
             <h3>Scan to Pay</h3>
             <div className="qr-container">
-              {qrCode ? (
-                <img src={qrCode} alt="QR Code for payment" className="qr-code" />
-              ) : (
-                <p style={{ textAlign: "center", color: "#999" }}>QR code not available</p>
-              )}
+              <img src={qrImage} alt="QR Code for payment" className="qr-code" />
             </div>
             <p className="qr-amount">
               Total Amount: <strong>RM {typeof totalAmount === 'number' ? totalAmount.toFixed(2) : totalAmount}</strong>
