@@ -179,20 +179,20 @@ const Payment = () => {
       const token = localStorage.getItem("token");
       if (!token) throw new Error("Not authenticated");
 
-      // Upload receipt file to backend
+      // Upload receipt file to backend (POST /api/bookings/:id/receipt-upload)
+      const bookingId = booking.id || booking._id;
       const uploadResponse = await uploadReceiptFile(
-        booking.id || booking._id,
+        bookingId,
         selectedFile,
         token
       );
 
       console.log("Receipt uploaded:", uploadResponse);
 
-      // Update booking payment status via backend endpoint
-      const bookingId = booking.id || booking._id;
+      // Update booking status (PATCH /api/bookings/:id/status)
       const updateResponse = await updateBookingStatus(
         bookingId,
-        "pending_approval",
+        "receipt_submitted",
         token
       );
 
