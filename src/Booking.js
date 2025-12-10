@@ -139,7 +139,19 @@ function Booking() {
         userId,
       };
 
+      // Final validation: ensure all required fields are present in request body
+      const requiredFields = ['serviceName', 'eventType', 'numPeople', 'foodPackage', 'drink', 'dessert', 'totalAmount', 'userId'];
+      const missingFields = requiredFields.filter(field => !bookingData[field]);
+      
+      if (missingFields.length > 0) {
+        console.error('Missing required fields:', missingFields);
+        setError(`Missing required data: ${missingFields.join(', ')}. Please refresh and try again.`);
+        setIsSubmitting(false);
+        return;
+      }
+
       console.log('Submitting booking data:', bookingData);
+      console.log('Request body validation passed. All required fields present.');
 
       // Submit booking to backend with required fields
       const response = await fetch(`${API_BASE_URL}/api/bookings`, {
@@ -191,7 +203,16 @@ function Booking() {
       navigate(`/payment?bookingId=${bookingId}`, { state: { bookingId, totalAmount, serviceName, userId } });
     } catch (err) {
       console.error('Booking submission error:', err);
-      const userMessage = err.message || 'Failed to create booking. Please try again.';
+      
+      // Differentiate between network errors and application errors
+      let userMessage = err.message || 'Failed to create booking. Please try again.';
+      
+      if (err.name === 'TypeError' && err.message.includes('fetch')) {
+        userMessage = 'Network error. Please check your internet connection and try again.';
+      } else if (err.message.includes('Failed to fetch')) {
+        userMessage = 'Unable to connect to server. Please check your internet connection.';
+      }
+      
       setError(userMessage);
     } finally {
       setIsSubmitting(false);
@@ -358,17 +379,22 @@ function Booking() {
           {/* Booking Summary */}
           <div className="summary-card">
             <h3>Booking Summary</h3>
+            {eventType && numPeople && foodPackage && drink && dessert && (
+              <p style={{ fontSize: '0.85rem', color: '#4caf50', marginBottom: '12px' }}>
+                ✓ All required fields completed
+              </p>
+            )}
             <ul>
               <li>
-                <span>Event Type:</span>
+                <span>Event Type: {!eventType && <span style={{ color: '#f44336' }}>*</span>}</span>
                 <strong>{eventType || '—'}</strong>
               </li>
               <li>
-                <span>Number of Guests:</span>
+                <span>Number of Guests: {!numPeople && <span style={{ color: '#f44336' }}>*</span>}</span>
                 <strong>{numPeople || '—'}</strong>
               </li>
               <li>
-                <span>Food Package:</span>
+                <span>Food Package: {!foodPackage && <span style={{ color: '#f44336' }}>*</span>}</span>
                 <strong>{foodPackage || '—'}</strong>
               </li>
               <li>
@@ -378,11 +404,11 @@ function Booking() {
                 </strong>
               </li>
               <li>
-                <span>Drink:</span>
+                <span>Drink: {!drink && <span style={{ color: '#f44336' }}>*</span>}</span>
                 <strong>{drink || '—'}</strong>
               </li>
               <li>
-                <span>Dessert:</span>
+                <span>Dessert: {!dessert && <span style={{ color: '#f44336' }}>*</span>}</span>
                 <strong>{dessert || '—'}</strong>
               </li>
               <li>
@@ -390,6 +416,11 @@ function Booking() {
                 <strong>RM {calculateTotalAmount() || '—'}</strong>
               </li>
             </ul>
+            {(!eventType || !numPeople || !foodPackage || !drink || !dessert) && (
+              <p style={{ fontSize: '0.85rem', color: '#ff9800', marginTop: '12px' }}>
+                * Required fields - please complete before submitting
+              </p>
+            )}
           </div>
 
           {/* Error Message with Retry Info */}
