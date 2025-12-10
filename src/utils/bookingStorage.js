@@ -41,9 +41,21 @@ export const updateBookingStatus = async (bookingId, status, token) => {
       "Content-Type": "application/json",
       Authorization: `Bearer ${token}`,
     },
-    body: JSON.stringify({ status }),
+    // Backend expects paymentStatus field
+    body: JSON.stringify({ paymentStatus: status }),
   });
-  if (!res.ok) throw new Error("Failed to update booking status");
+
+  if (!res.ok) {
+    let detail = "";
+    try {
+      const data = await res.json();
+      detail = data?.message || data?.error || JSON.stringify(data);
+    } catch (e) {
+      detail = `status ${res.status}`;
+    }
+    throw new Error(`Failed to update booking status: ${detail}`);
+  }
+
   return res.json();
 };
 
