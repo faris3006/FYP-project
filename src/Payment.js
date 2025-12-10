@@ -190,9 +190,10 @@ const Payment = () => {
       console.log("Receipt uploaded:", uploadResponse);
 
       // Update booking status (PATCH /api/bookings/:id/status)
+      // Backend accepts: 'pending', 'receipt_submitted', 'completed'
       const updateResponse = await updateBookingStatus(
         bookingId,
-        "pending_approval",
+        "receipt_submitted",
         token
       );
 
