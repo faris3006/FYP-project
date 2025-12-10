@@ -76,19 +76,31 @@ const BookingHistory = () => {
       ) : (
         <section className="history-grid">
           {bookings.map(booking => {
-            const bookingStatus = typeof booking.status === 'string' ? booking.status : 'unknown';
+            const details = booking.serviceDetails || {};
+            const bookingStatusRaw = booking.paymentStatus || booking.status || 'unknown';
+            const bookingStatus = typeof bookingStatusRaw === 'string' ? bookingStatusRaw : 'unknown';
             const status = statusCopy[bookingStatus] ?? {
               label: bookingStatus,
               description: "",
               tone: "info",
             };
-            const needsPayment = ["awaiting_payment", "rejected"].includes(bookingStatus);
-            
+            const needsPayment = ["awaiting_payment", "rejected", "pending"].includes(bookingStatus);
+
+            const bookingId = booking.id || booking._id || booking.bookingId;
+            const eventTitle = booking.serviceName || details.eventType || booking.eventType || 'Event Booking';
+            const numPeople = details.numPeople || booking.numPeople;
+            const foodPackage = details.foodPackage || booking.foodPackage;
+            const selectedSides = details.selectedSides || booking.selectedSides;
+            const drink = details.drink || booking.drink;
+            const dessert = details.dessert || booking.dessert;
+            const notes = details.notes || details.specialRequests || booking.specialRequests;
+            const totalAmount = booking.totalAmount || booking.amountDue || details.totalAmount;
+
             return (
-              <article key={booking.id} className="history-card">
+              <article key={bookingId || eventTitle} className="history-card">
                 <div className="card-head">
                   <div>
-                    <h3>{booking.eventType || 'Event Booking'}</h3>
+                    <h3>{eventTitle}</h3>
                     <p>
                       {booking.createdAt ? new Date(booking.createdAt).toLocaleDateString() : 'Date N/A'}
                     </p>
@@ -98,27 +110,33 @@ const BookingHistory = () => {
                 <ul>
                   <li>
                     <span>Guests</span>
-                    <strong>{booking.numPeople || 'N/A'} people</strong>
+                    <strong>{numPeople || 'N/A'} people</strong>
                   </li>
                   <li>
                     <span>Main dish</span>
-                    <strong>{booking.foodPackage || 'N/A'}</strong>
+                    <strong>{foodPackage || 'N/A'}</strong>
                   </li>
                   <li>
                     <span>Sides</span>
-                    <strong>{Array.isArray(booking.selectedSides) && booking.selectedSides.length > 0 ? booking.selectedSides.join(", ") : "None"}</strong>
+                    <strong>{Array.isArray(selectedSides) && selectedSides.length > 0 ? selectedSides.join(", ") : "None"}</strong>
                   </li>
                   <li>
                     <span>Drink</span>
-                    <strong>{booking.drink || "None"}</strong>
+                    <strong>{drink || "None"}</strong>
                   </li>
                   <li>
                     <span>Dessert</span>
-                    <strong>{booking.dessert || "None"}</strong>
+                    <strong>{dessert || "None"}</strong>
                   </li>
+                  {notes && (
+                    <li>
+                      <span>Notes</span>
+                      <strong>{notes}</strong>
+                    </li>
+                  )}
                   <li>
                     <span>Total Amount</span>
-                    <strong>RM {booking.totalAmount || booking.amountDue || 'N/A'}</strong>
+                    <strong>RM {totalAmount ?? 'N/A'}</strong>
                   </li>
                 </ul>
                 <p className="status-copy">{status.description}</p>
@@ -128,11 +146,11 @@ const BookingHistory = () => {
                       className="primary"
                       onClick={() =>
                         navigate("/payment", {
-                          state: { bookingId: booking.id },
+                          state: { bookingId },
                         })
                       }
                     >
-                      {booking.status === "pending_payment" ? "Resubmit payment" : "Pay now"}
+                      {bookingStatus === "pending_payment" ? "Resubmit payment" : "Pay now"}
                     </button>
                   )}
                   <button className="ghost" onClick={() => navigate("/booking")}>
