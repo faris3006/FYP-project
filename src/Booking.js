@@ -126,6 +126,7 @@ function Booking() {
       }
 
       // Build complete booking object with all required fields
+      // Note: qrCode is NOT included - backend generates unique QR codes automatically
       const bookingData = {
         serviceName,
         eventType,
@@ -138,6 +139,12 @@ function Booking() {
         totalAmount,
         userId,
       };
+
+      // Explicitly ensure qrCode is not sent (backend generates it)
+      if ('qrCode' in bookingData) {
+        delete bookingData.qrCode;
+        console.warn('Removed qrCode from request - backend will generate it');
+      }
 
       // Final validation: ensure all required fields are present in request body
       const requiredFields = ['serviceName', 'eventType', 'numPeople', 'foodPackage', 'drink', 'dessert', 'totalAmount', 'userId'];
@@ -213,6 +220,8 @@ function Booking() {
         userMessage = 'Unable to connect to server. Please check your internet connection.';
       }
       
+      // Form data is preserved - user can retry without re-entering information
+      console.log('Form data preserved for retry. User can resubmit when ready.');
       setError(userMessage);
     } finally {
       setIsSubmitting(false);
@@ -434,6 +443,9 @@ function Booking() {
               fontSize: '0.9rem'
             }}>
               <div style={{ marginBottom: '12px' }}>✕ <strong>Error:</strong> {error}</div>
+              <div style={{ fontSize: '0.85rem', color: '#555', marginTop: '8px', padding: '8px', backgroundColor: '#fff3cd', borderRadius: '4px' }}>
+                ℹ️ <strong>Good news:</strong> Your booking details are preserved. Simply click "Complete Booking" again to retry.
+              </div>
               <div style={{ fontSize: '0.85rem', color: '#999', marginTop: '8px' }}>
                 If the issue persists, try refreshing the page or clearing your browser cache.
               </div>
