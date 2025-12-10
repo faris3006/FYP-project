@@ -84,13 +84,16 @@ function Booking() {
     const numPeopleInt = parseInt(numPeople, 10);
     const totalAmount = calculateTotalAmount();
 
+    // Validate all required fields
     if (!serviceName || Number.isNaN(numPeopleInt) || numPeopleInt <= 0 || !foodPackage || !drink || !dessert) {
       setError('Please fill in all required fields and ensure guest count is valid.');
+      console.warn('Form validation failed:', { serviceName, numPeopleInt, foodPackage, drink, dessert });
       return;
     }
 
     if (!totalAmount || totalAmount <= 0) {
       setError('Unable to calculate price. Please review your selections.');
+      console.warn('Price calculation failed:', { totalAmount });
       return;
     }
 
@@ -98,7 +101,8 @@ function Booking() {
     try {
       const token = localStorage.getItem('token');
       if (!token) {
-        setError('You must be logged in to make a booking');
+        setError('You must be logged in to make a booking. Please log in and try again.');
+        setIsSubmitting(false);
         return;
       }
 
@@ -107,12 +111,14 @@ function Booking() {
         eventType,
         numPeople: numPeopleInt,
         foodPackage,
-        selectedSides,
+        selectedSides: selectedSides && selectedSides.length > 0 ? selectedSides : [],
         drink,
         dessert,
-        specialRequests,
+        specialRequests: specialRequests || '',
         totalAmount,
       };
+
+      console.log('Submitting booking data:', bookingData);
 
       // Submit booking to backend with required fields
       const response = await fetch(`${API_BASE_URL}/api/bookings`, {
@@ -124,25 +130,38 @@ function Booking() {
         body: JSON.stringify(bookingData),
       });
 
+      console.log('Booking response status:', response.status);
+
       if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.message || 'Failed to create booking');
+        let errorMessage = 'Failed to create booking';
+        try {
+          const errorData = await response.json();
+          errorMessage = errorData.message || errorData.error || errorMessage;
+          console.error('Backend error response:', errorData);
+        } catch (parseErr) {
+          console.error('Could not parse error response:', parseErr);
+        }
+        throw new Error(errorMessage);
       }
 
       const result = await response.json();
-      const bookingId = result.id || result._id;
+      console.log('Booking response:', result);
+
+      const bookingId = result.id || result._id || result.bookingId;
 
       if (!bookingId) {
-        throw new Error('No booking ID received from backend');
+        console.error('No booking ID in response:', result);
+        throw new Error('Booking was created but no ID was returned. Please contact support if this persists.');
       }
 
-      console.log('Booking created successfully:', bookingId);
+      console.log('Booking created successfully with ID:', bookingId);
       
       // Navigate to Payment page with booking ID via URL and state
-      navigate(`/payment?bookingId=${bookingId}`, { state: { bookingId, totalAmount } });
+      navigate(`/payment?bookingId=${bookingId}`, { state: { bookingId, totalAmount, serviceName } });
     } catch (err) {
       console.error('Booking submission error:', err);
-      setError(err.message || 'Failed to create booking. Please try again.');
+      const userMessage = err.message || 'Failed to create booking. Please try again.';
+      setError(userMessage);
     } finally {
       setIsSubmitting(false);
     }
@@ -342,17 +361,20 @@ function Booking() {
             </ul>
           </div>
 
-          {/* Error Message */}
+          {/* Error Message with Retry Info */}
           {error && (
             <div style={{
-              padding: '12px 16px',
+              padding: '16px',
               backgroundColor: '#fee',
               color: '#c33',
               borderRadius: '8px',
               marginBottom: '16px',
               fontSize: '0.9rem'
             }}>
-              ✕ {error}
+              <div style={{ marginBottom: '12px' }}>✕ <strong>Error:</strong> {error}</div>
+              <div style={{ fontSize: '0.85rem', color: '#999', marginTop: '8px' }}>
+                If the issue persists, try refreshing the page or clearing your browser cache.
+              </div>
             </div>
           )}
 

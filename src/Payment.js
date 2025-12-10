@@ -42,22 +42,41 @@ const Payment = () => {
       
       const token = localStorage.getItem("token");
       if (!token) {
-        setError("You must be logged in to make a payment.");
+        setError("You must be logged in to make a payment. Please log in and try again.");
         setIsLoading(false);
         return;
       }
       
       try {
+        console.log("Fetching booking with ID:", bookingId);
+        
         // Fetch booking from backend
         const response = await fetch(`${API_BASE_URL}/api/bookings/${bookingId}`, {
           headers: { Authorization: `Bearer ${token}` },
         });
+
+        console.log("Booking fetch response status:", response.status);
         
         if (!response.ok) {
-          throw new Error("Booking not found or access denied.");
+          let errorMessage = "Booking not found or access denied.";
+          try {
+            const errorData = await response.json();
+            errorMessage = errorData.message || errorData.error || errorMessage;
+            console.error("Backend error:", errorData);
+          } catch (parseErr) {
+            console.error("Could not parse error response:", parseErr);
+          }
+          throw new Error(errorMessage);
         }
         
         const data = await response.json();
+        console.log("Booking data received:", data);
+
+        // Validate booking response has required fields
+        if (!data || typeof data !== "object") {
+          throw new Error("Invalid booking data received from server.");
+        }
+
         setBooking(data);
         setError("");
       } catch (e) {
@@ -87,7 +106,9 @@ const Payment = () => {
                   <strong>⚠ {error || "No booking found"}</strong>
                 </p>
                 <p style={{ fontSize: '0.9rem', marginBottom: '16px' }}>
-                  If you believe this is a mistake, please try creating a new booking. Your payment data will not be lost.
+                  {error?.includes("not found") 
+                    ? "The booking you're trying to access doesn't exist. Please create a new booking to continue."
+                    : "If you believe this is a mistake, please try refreshing the page or creating a new booking."}
                 </p>
                 <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
                   <button className="submit-booking" onClick={() => navigate("/booking")}>
@@ -96,14 +117,9 @@ const Payment = () => {
                   <button 
                     className="submit-booking" 
                     style={{ backgroundColor: '#667eea' }}
-                    onClick={() => {
-                      setError("");
-                      setIsLoading(true);
-                      // Retry fetching
-                      window.location.reload();
-                    }}
+                    onClick={() => window.location.reload()}
                   >
-                    Retry
+                    Retry Loading
                   </button>
                 </div>
               </>
