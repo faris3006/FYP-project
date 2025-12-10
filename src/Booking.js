@@ -31,6 +31,36 @@ function Booking() {
     'Sesame Salad',
   ];
 
+  // Pricing tables (keep in sync with Payment page)
+  const foodPrices = {
+    'Grilled Chicken with 1 Side': 25,
+    'Grilled Chicken with 2 Sides': 30,
+    'Grilled Chicken with 3 Sides': 35,
+    'Grilled Chicken with Rice (1 Side)': 28,
+    'Grilled Chicken with Rice (2 Sides)': 33,
+  };
+
+  const drinkPrices = {
+    'Soft Drink': 3,
+    'Juice': 5,
+    'Mineral Water': 2,
+  };
+
+  const dessertPrices = {
+    'No Dessert': 0,
+    'Matcha Bingsu': 15,
+    'Biscoff Bingsu': 15,
+  };
+
+  const calculateTotalAmount = () => {
+    const guests = parseInt(numPeople, 10) || 0;
+    const foodPrice = foodPrices[foodPackage] || 0;
+    const drinkPrice = drinkPrices[drink] || 0;
+    const dessertPrice = dessertPrices[dessert] || 0;
+    const total = (foodPrice + drinkPrice + dessertPrice) * (guests || 1);
+    return Number(total.toFixed(2));
+  };
+
   const handleFoodChange = (e) => {
     const selected = e.target.value;
     setFoodPackage(selected);
@@ -49,9 +79,18 @@ function Booking() {
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
-    
-    if (!eventType || !numPeople || !foodPackage || !drink || !dessert) {
-      setError('Please fill in all required fields');
+
+    const serviceName = eventType?.trim();
+    const numPeopleInt = parseInt(numPeople, 10);
+    const totalAmount = calculateTotalAmount();
+
+    if (!serviceName || Number.isNaN(numPeopleInt) || numPeopleInt <= 0 || !foodPackage || !drink || !dessert) {
+      setError('Please fill in all required fields and ensure guest count is valid.');
+      return;
+    }
+
+    if (!totalAmount || totalAmount <= 0) {
+      setError('Unable to calculate price. Please review your selections.');
       return;
     }
 
@@ -64,16 +103,18 @@ function Booking() {
       }
 
       const bookingData = {
+        serviceName,
         eventType,
-        numPeople: parseInt(numPeople),
+        numPeople: numPeopleInt,
         foodPackage,
         selectedSides,
         drink,
         dessert,
         specialRequests,
+        totalAmount,
       };
 
-      // Submit booking to backend
+      // Submit booking to backend with required fields
       const response = await fetch(`${API_BASE_URL}/api/bookings`, {
         method: 'POST',
         headers: {
@@ -97,8 +138,8 @@ function Booking() {
 
       console.log('Booking created successfully:', bookingId);
       
-      // Navigate to Payment page with booking ID
-      navigate(`/payment?bookingId=${bookingId}`);
+      // Navigate to Payment page with booking ID via URL and state
+      navigate(`/payment?bookingId=${bookingId}`, { state: { bookingId, totalAmount } });
     } catch (err) {
       console.error('Booking submission error:', err);
       setError(err.message || 'Failed to create booking. Please try again.');
@@ -293,6 +334,10 @@ function Booking() {
               <li>
                 <span>Dessert:</span>
                 <strong>{dessert || '—'}</strong>
+              </li>
+              <li>
+                <span>Total Amount:</span>
+                <strong>RM {calculateTotalAmount() || '—'}</strong>
               </li>
             </ul>
           </div>
