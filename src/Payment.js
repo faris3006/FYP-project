@@ -192,7 +192,7 @@ const Payment = () => {
       // Update booking status (PATCH /api/bookings/:id/status)
       const updateResponse = await updateBookingStatus(
         bookingId,
-        "receipt_submitted",
+        "pending_approval",
         token
       );
 
