@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { jwtDecode } from 'jwt-decode';
 import './Booking.css';
 import API_BASE_URL from './config/api';
 
@@ -106,6 +107,25 @@ function Booking() {
         return;
       }
 
+      let userId = '';
+      try {
+        const decoded = jwtDecode(token);
+        userId = decoded.userId || decoded.id || decoded.sub || '';
+        console.log('Extracted userId from token:', userId);
+      } catch (tokenErr) {
+        console.error('Failed to decode token:', tokenErr);
+        setError('Invalid session. Please log in again.');
+        setIsSubmitting(false);
+        return;
+      }
+
+      if (!userId) {
+        setError('Unable to identify user. Please log in again.');
+        setIsSubmitting(false);
+        return;
+      }
+
+      // Build complete booking object with all required fields
       const bookingData = {
         serviceName,
         eventType,
@@ -116,6 +136,7 @@ function Booking() {
         dessert,
         specialRequests: specialRequests || '',
         totalAmount,
+        userId,
       };
 
       console.log('Submitting booking data:', bookingData);
@@ -134,12 +155,17 @@ function Booking() {
 
       if (!response.ok) {
         let errorMessage = 'Failed to create booking';
+        let backendError = null;
         try {
-          const errorData = await response.json();
-          errorMessage = errorData.message || errorData.error || errorMessage;
-          console.error('Backend error response:', errorData);
+          backendError = await response.json();
+          errorMessage = backendError.message || backendError.error || errorMessage;
+          console.error('Backend error response:', backendError);
         } catch (parseErr) {
           console.error('Could not parse error response:', parseErr);
+          // Try to extract status text if JSON parsing fails
+          if (response.statusText) {
+            errorMessage = `Server error (${response.status}): ${response.statusText}`;
+          }
         }
         throw new Error(errorMessage);
       }
@@ -147,17 +173,22 @@ function Booking() {
       const result = await response.json();
       console.log('Booking response:', result);
 
-      const bookingId = result.id || result._id || result.bookingId;
+      // Handle various possible response formats
+      const bookingId = result.id || result._id || result.bookingId || result.data?.id || result.data?._id;
 
       if (!bookingId) {
         console.error('No booking ID in response:', result);
         throw new Error('Booking was created but no ID was returned. Please contact support if this persists.');
       }
 
+      if (!bookingId.toString().trim()) {
+        throw new Error('Received invalid booking ID from server.');
+      }
+
       console.log('Booking created successfully with ID:', bookingId);
       
       // Navigate to Payment page with booking ID via URL and state
-      navigate(`/payment?bookingId=${bookingId}`, { state: { bookingId, totalAmount, serviceName } });
+      navigate(`/payment?bookingId=${bookingId}`, { state: { bookingId, totalAmount, serviceName, userId } });
     } catch (err) {
       console.error('Booking submission error:', err);
       const userMessage = err.message || 'Failed to create booking. Please try again.';
