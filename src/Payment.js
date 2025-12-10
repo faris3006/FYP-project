@@ -77,7 +77,11 @@ const Payment = () => {
           throw new Error("Invalid booking data received from server.");
         }
 
-        setBooking(data);
+        // Backend might return { booking: {...} } or just the booking object
+        const bookingData = data.booking || data;
+        console.log("Extracted booking data:", bookingData);
+
+        setBooking(bookingData);
         setError("");
       } catch (e) {
         console.error("Failed to fetch booking:", e);
@@ -91,7 +95,8 @@ const Payment = () => {
     fetchBooking();
   }, [bookingId]);
 
-  if (!booking) {
+  // Show loading or error state
+  if (isLoading || !booking) {
     return (
       <div className="payment-page">
         <div className="booking-layout">
@@ -100,7 +105,7 @@ const Payment = () => {
               <>
                 <p>Loading booking details...</p>
               </>
-            ) : (
+            ) : !booking ? (
               <>
                 <p style={{ color: '#c33', marginBottom: '16px' }}>
                   <strong>⚠ {error || "No booking found"}</strong>
@@ -123,12 +128,14 @@ const Payment = () => {
                   </button>
                 </div>
               </>
-            )}
+            ) : null}
           </div>
         </div>
       </div>
     );
   }
+
+  console.log("Rendering payment page with booking:", booking);
 
   // Calculate dynamic price based on selections
   const calculatePrice = () => {
