@@ -46,7 +46,11 @@ const BookingHistory = () => {
       if (!token) return;
       try {
         const data = await getBookingsByUser(token);
-        const list = Array.isArray(data) ? data : [];
+        const list = Array.isArray(data)
+          ? data
+          : Array.isArray(data?.bookings)
+            ? data.bookings
+            : [];
 
         // If list items lack serviceDetails or totalAmount, fetch each booking for full details
         const enriched = await Promise.all(
@@ -58,13 +62,14 @@ const BookingHistory = () => {
               const full = await getBookingById(id, token);
               return { ...b, ...full };
             } catch (err) {
+              console.warn("Failed to fetch booking detail", id, err);
               return b; // fallback to original if detail fetch fails
             }
           })
         );
 
         setBookings(
-          enriched.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
+          enriched.sort((a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0))
         );
       } catch (e) {
         setBookings([]);
@@ -91,7 +96,7 @@ const BookingHistory = () => {
       ) : (
         <section className="history-grid">
           {bookings.map(booking => {
-            const details = booking.serviceDetails || {};
+            const details = booking.serviceDetails || booking.service || {};
             const bookingStatusRaw = booking.paymentStatus || booking.status || 'unknown';
             const bookingStatus = typeof bookingStatusRaw === 'string' ? bookingStatusRaw : 'unknown';
             const status = statusCopy[bookingStatus] ?? {
@@ -102,14 +107,14 @@ const BookingHistory = () => {
             const needsPayment = ["awaiting_payment", "rejected", "pending"].includes(bookingStatus);
 
             const bookingId = booking.id || booking._id || booking.bookingId;
-            const eventTitle = booking.serviceName || details.eventType || booking.eventType || 'Event Booking';
-            const numPeople = details.numPeople || booking.numPeople;
+            const eventTitle = booking.serviceName || details.eventType || details.serviceName || booking.eventType || 'Event Booking';
+            const numPeople = details.numPeople ?? booking.numPeople;
             const foodPackage = details.foodPackage || booking.foodPackage;
             const selectedSides = details.selectedSides || booking.selectedSides;
             const drink = details.drink || booking.drink;
             const dessert = details.dessert || booking.dessert;
             const notes = details.notes || details.specialRequests || booking.specialRequests;
-            const totalAmount = booking.totalAmount || booking.amountDue || details.totalAmount;
+            const totalAmount = booking.totalAmount ?? booking.amountDue ?? details.totalAmount;
 
             return (
               <article key={bookingId || eventTitle} className="history-card">
@@ -151,7 +156,7 @@ const BookingHistory = () => {
                   )}
                   <li>
                     <span>Total Amount</span>
-                    <strong>RM {totalAmount ?? 'N/A'}</strong>
+                    <strong>RM {totalAmount != null ? totalAmount : 'N/A'}</strong>
                   </li>
                 </ul>
                 <p className="status-copy">{status.description}</p>
