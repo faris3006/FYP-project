@@ -2,6 +2,15 @@ import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import API_BASE_URL from "./config/api";
 
+// Helper to fetch full booking by id (mirrors frontend user detail fetch)
+const getBookingById = async (id, token) => {
+  const res = await fetch(`${API_BASE_URL}/api/bookings/${id}`, {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  if (!res.ok) throw new Error("Failed to fetch booking detail");
+  return res.json();
+};
+
 
 
 const AdminDashboard = () => {
@@ -53,14 +62,25 @@ const AdminDashboard = () => {
         if (!res.ok) throw new Error("Failed to fetch bookings");
         return res.json();
       })
-      .then((data) => {
-        if (Array.isArray(data)) {
-          setBookings(data);
-        } else if (data.bookings && Array.isArray(data.bookings)) {
-          setBookings(data.bookings);
-        } else {
-          setBookings([]);
-        }
+      .then(async (data) => {
+        const list = Array.isArray(data) ? data : data.bookings || [];
+
+        // Enrich each booking with full details (serviceDetails, receipt info) if missing
+        const enriched = await Promise.all(
+          list.map(async (b) => {
+            const id = b._id || b.id || b.bookingId;
+            const hasDetails = b.serviceDetails || b.totalAmount || b.paymentStatus;
+            if (!id || hasDetails) return b;
+            try {
+              const full = await getBookingById(id, token);
+              return { ...b, ...full };
+            } catch (err) {
+              return b; // fallback
+            }
+          })
+        );
+
+        setBookings(enriched);
         setError(""); // Clear error on success
       })
       .catch(() => {
@@ -195,6 +215,8 @@ const AdminDashboard = () => {
                 <th style={thTdStyle}>User</th>
                 <th style={thTdStyle}>Booking Date</th>
                 <th style={thTdStyle}>Payment Status</th>
+                <th style={thTdStyle}>Event Details</th>
+                <th style={thTdStyle}>Receipt</th>
                 <th style={thTdStyle}>Action</th>
               </tr>
             </thead>
@@ -212,10 +234,11 @@ const AdminDashboard = () => {
                   const bookingDate = booking.bookingDate;
                   const normalizedStatus = normalizeStatus(booking.status);
                   const isCompleted = normalizedStatus === "completed";
-                  const paymentStatus =
-                    booking.paymentStatus !== undefined
-                      ? booking.paymentStatus
-                      : isCompleted;
+                  const paymentStatus = booking.paymentStatus || booking.status;
+                  const details = booking.serviceDetails || {};
+                  const totalAmount = booking.totalAmount || booking.amountDue || details.totalAmount;
+                  const selectedSides = details.selectedSides || booking.selectedSides;
+                  const receiptName = booking.receiptFileName || details.receiptFileName || booking.receiptName;
                   const userName = userId?.name || booking.userEmail || booking.userId || "Unknown";
                   const displayDate = bookingDate
                     ? new Date(bookingDate).toLocaleString()
@@ -231,8 +254,21 @@ const AdminDashboard = () => {
                     <tr key={_id}>
                       <td style={thTdStyle}>{userName}</td>
                       <td style={thTdStyle}>{displayDate}</td>
+                      <td style={thTdStyle}>{paymentStatus || "N/A"}</td>
                       <td style={thTdStyle}>
-                        {paymentStatus ? "Paid" : "Unpaid"}
+                        <div style={{ lineHeight: 1.4 }}>
+                          <div><strong>Event:</strong> {details.eventType || booking.eventType || booking.serviceName || "N/A"}</div>
+                          <div><strong>Guests:</strong> {details.numPeople || booking.numPeople || "N/A"}</div>
+                          <div><strong>Food:</strong> {details.foodPackage || booking.foodPackage || "N/A"}</div>
+                          <div><strong>Sides:</strong> {Array.isArray(selectedSides) && selectedSides.length ? selectedSides.join(', ') : "None"}</div>
+                          <div><strong>Drink:</strong> {details.drink || booking.drink || "None"}</div>
+                          <div><strong>Dessert:</strong> {details.dessert || booking.dessert || "None"}</div>
+                          {details.notes && <div><strong>Notes:</strong> {details.notes}</div>}
+                          <div><strong>Total:</strong> RM {totalAmount ?? "N/A"}</div>
+                        </div>
+                      </td>
+                      <td style={thTdStyle}>
+                        {receiptName ? receiptName : "—"}
                       </td>
                       <td style={thTdStyle}>{actionLabel}</td>
                     </tr>

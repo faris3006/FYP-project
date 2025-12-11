@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import "./BookingHistory.css";
-import { getBookingsByUser } from "./utils/bookingStorage";
+import { getBookingsByUser, getBookingById } from "./utils/bookingStorage";
 
 const statusCopy = {
   awaiting_payment: {
@@ -46,10 +46,25 @@ const BookingHistory = () => {
       if (!token) return;
       try {
         const data = await getBookingsByUser(token);
+        const list = Array.isArray(data) ? data : [];
+
+        // If list items lack serviceDetails or totalAmount, fetch each booking for full details
+        const enriched = await Promise.all(
+          list.map(async (b) => {
+            const id = b.id || b._id || b.bookingId;
+            const hasDetails = b.serviceDetails || b.totalAmount || b.paymentStatus;
+            if (!id || hasDetails) return b;
+            try {
+              const full = await getBookingById(id, token);
+              return { ...b, ...full };
+            } catch (err) {
+              return b; // fallback to original if detail fetch fails
+            }
+          })
+        );
+
         setBookings(
-          Array.isArray(data)
-            ? data.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
-            : []
+          enriched.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
         );
       } catch (e) {
         setBookings([]);
