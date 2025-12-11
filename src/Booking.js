@@ -108,9 +108,21 @@ function Booking() {
       }
 
       let userId = '';
+      let decoded = null;
       try {
-        const decoded = jwtDecode(token);
+        decoded = jwtDecode(token);
         userId = decoded.userId || decoded.id || decoded.sub || '';
+        
+        // Check if token is expired
+        if (decoded.exp && decoded.exp * 1000 < Date.now()) {
+          console.warn('Token has expired');
+          localStorage.removeItem('token');
+          setError('Your session has expired. Please log in again to continue.');
+          setIsSubmitting(false);
+          setTimeout(() => navigate('/login'), 2000);
+          return;
+        }
+        
         console.log('Extracted userId from token:', userId);
       } catch (tokenErr) {
         console.error('Failed to decode token:', tokenErr);
@@ -179,6 +191,16 @@ function Booking() {
           backendError = await response.json();
           errorMessage = backendError.message || backendError.error || errorMessage;
           console.error('Backend error response:', backendError);
+          
+          // Handle invalid token specifically (403 with "Invalid token" message)
+          if (response.status === 403 || errorMessage.toLowerCase().includes('invalid token')) {
+            console.error('Token is invalid or expired. Clearing local storage.');
+            localStorage.removeItem('token');
+            setError('Your session is invalid. Please log in again to continue.');
+            setIsSubmitting(false);
+            setTimeout(() => navigate('/login'), 2000);
+            return;
+          }
         } catch (parseErr) {
           console.error('Could not parse error response:', parseErr);
           // Try to extract status text if JSON parsing fails
@@ -218,6 +240,11 @@ function Booking() {
         userMessage = 'Network error. Please check your internet connection and try again.';
       } else if (err.message.includes('Failed to fetch')) {
         userMessage = 'Unable to connect to server. Please check your internet connection.';
+      } else if (err.message.toLowerCase().includes('invalid token') || err.message.toLowerCase().includes('session')) {
+        // Token-related errors - clear token and redirect
+        localStorage.removeItem('token');
+        userMessage = err.message;
+        setTimeout(() => navigate('/login'), 2000);
       }
       
       // Form data is preserved - user can retry without re-entering information
