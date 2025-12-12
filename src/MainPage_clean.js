@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { jwtDecode } from "jwt-decode";
-import "./shared.css";
+import { jwtDecode } from "jwt-decode";import API_BASE_URL from "./config/api";import "./shared.css";
 import "./MainPage.css";
 
 const MainPage = () => {
