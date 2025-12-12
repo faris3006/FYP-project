@@ -204,7 +204,25 @@ const AdminDashboard = () => {
   // Only use backend bookings
   const historyBookings = bookings;
 
-  const logout = () => {
+  const logout = async () => {
+    const token = localStorage.getItem("token");
+    
+    if (token) {
+      try {
+        // Call backend logout API to end session
+        await fetch(`${API_BASE_URL}/api/auth/logout`, {
+          method: "POST",
+          headers: {
+            "Authorization": `Bearer ${token}`,
+            "Content-Type": "application/json"
+          }
+        });
+      } catch (error) {
+        console.error("Logout error:", error);
+      }
+    }
+    
+    // Clear local storage and redirect
     localStorage.removeItem("token");
     navigate("/login");
   };

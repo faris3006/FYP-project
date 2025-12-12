@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { jwtDecode } from "jwt-decode";
+import API_BASE_URL from "./config/api";
 import "./MainPage.css";
 
 const MainPage = () => {
@@ -25,7 +26,25 @@ const MainPage = () => {
     }
   }, []);
 
-  const handleLogout = () => {
+  const handleLogout = async () => {
+    const token = localStorage.getItem("token");
+    
+    if (token) {
+      try {
+        // Call backend logout API to end session
+        await fetch(`${API_BASE_URL}/api/auth/logout`, {
+          method: "POST",
+          headers: {
+            "Authorization": `Bearer ${token}`,
+            "Content-Type": "application/json"
+          }
+        });
+      } catch (error) {
+        console.error("Logout error:", error);
+      }
+    }
+    
+    // Clear local storage and redirect
     localStorage.removeItem("token");
     setIsLoggedIn(false);
     setUserRole(null);
