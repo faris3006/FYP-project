@@ -82,6 +82,12 @@ const ResetPassword = () => {
       const data = await response.json();
 
       if (response.ok) {
+        // Clear any login block state so the user can log in after resetting password
+        localStorage.removeItem('loginAttempts');
+        localStorage.removeItem('loginBlockEndTime');
+        localStorage.removeItem('loginPermanentBlock');
+        localStorage.removeItem('loginHadFirstBlock');
+
         setSuccess(
           data.message ||
             "Password updated. Log in with your new password and complete MFA verification."
