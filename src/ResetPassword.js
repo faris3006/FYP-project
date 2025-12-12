@@ -92,7 +92,7 @@ const ResetPassword = () => {
           data.message ||
             "Password updated. Log in with your new password and complete MFA verification."
         );
-        setTimeout(() => navigate("/login"), 1800);
+        setTimeout(() => navigate("/login?resetSuccess=true"), 1800);
       } else if (response.status === 404) {
         setError(
           "Reset endpoint unavailable. Please verify the backend is running."

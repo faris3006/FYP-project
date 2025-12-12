@@ -22,6 +22,30 @@ const Login = () => {
 
   // Load block data from localStorage on component mount
   useEffect(() => {
+    // Check if user just reset password - force clear all blocks
+    const urlParams = new URLSearchParams(window.location.search);
+    const resetSuccess = urlParams.get('resetSuccess');
+    
+    if (resetSuccess === 'true') {
+      // Force clear all login block data
+      localStorage.removeItem('loginAttempts');
+      localStorage.removeItem('loginBlockEndTime');
+      localStorage.removeItem('loginPermanentBlock');
+      localStorage.removeItem('loginHadFirstBlock');
+      
+      // Clean up URL parameter
+      window.history.replaceState({}, '', '/login');
+      
+      // Reset all states
+      setFailedAttempts(0);
+      setIsTemporarilyBlocked(false);
+      setIsPermanentlyBlocked(false);
+      setBlockEndTime(null);
+      setRemainingTime(0);
+      setHasHadFirstBlock(false);
+      return;
+    }
+    
     const savedAttempts = localStorage.getItem('loginAttempts');
     const savedBlockEndTime = localStorage.getItem('loginBlockEndTime');
     const savedPermanentBlock = localStorage.getItem('loginPermanentBlock');
