@@ -114,79 +114,6 @@ const Login = () => {
     return `${mins}:${secs.toString().padStart(2, '0')}`;
   };
 
-  // Force logout from other device/browser
-  const handleForceLogout = async () => {
-    setLoading(true);
-    setError("");
-    
-    try {
-      const response = await fetch(`${API_BASE_URL}/api/auth/force-logout`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ 
-          email: sessionBlockedEmail, 
-          password: sessionBlockedPassword 
-        }),
-      });
-
-      const data = await response.json();
-
-      if (response.ok) {
-        // Force logout successful, now try to login again
-        setSessionBlocked(false);
-        await handleLoginAfterForceLogout();
-      } else {
-        setError(data.message || "Failed to force logout. Please try again.");
-      }
-    } catch (error) {
-      setError("Connection error. Please try again.");
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  // Login after successful force logout
-  const handleLoginAfterForceLogout = async () => {
-    try {
-      const response = await fetch(`${API_BASE_URL}/api/auth/login`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ 
-          email: sessionBlockedEmail, 
-          password: sessionBlockedPassword 
-        }),
-      });
-
-      const data = await response.json();
-
-      if (response.ok) {
-        // Clear all attempt tracking
-        localStorage.removeItem('loginAttempts');
-        localStorage.removeItem('loginBlockEndTime');
-        localStorage.removeItem('loginPermanentBlock');
-        localStorage.removeItem('loginHadFirstBlock');
-        setFailedAttempts(0);
-        setHasHadFirstBlock(false);
-        
-        if (data.mfaRequired) {
-          localStorage.setItem("mfaEmail", sessionBlockedEmail);
-          if (data.userId) {
-            localStorage.setItem("mfaUserId", data.userId);
-          }
-          navigate(`/mfa-verification?email=${encodeURIComponent(sessionBlockedEmail)}&userId=${encodeURIComponent(data.userId || "")}`);
-        } else {
-          localStorage.setItem("token", data.token);
-          const user = jwtDecode(data.token);
-          navigate(user.role === "admin" ? "/admin" : "/");
-        }
-      } else {
-        setError(data.message || "Login failed after force logout.");
-      }
-    } catch (error) {
-      setError("Connection error. Please try again.");
-    }
-  };
-
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError("");
@@ -372,22 +299,6 @@ const Login = () => {
           >
             {loading ? "Logging in..." : "Login"}
           </button>
-          
-          {sessionBlocked && (
-            <button 
-              type="button"
-              className="btn-submit"
-              onClick={handleForceLogout}
-              disabled={loading}
-              style={{ 
-                backgroundColor: '#ff9800',
-                marginTop: '10px',
-                opacity: loading ? 0.6 : 1
-              }}
-            >
-              {loading ? "Processing..." : "🔓 Force Logout Other Device"}
-            </button>
-          )}
         </form>
 
         <p className="auth-footer">
