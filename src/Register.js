@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import "./shared.css";
 import "./Register.css";
 import API_BASE_URL from "./config/api";
+import ConfirmationDialog from "./components/ConfirmationDialog";
 
 const Register = () => {
   const navigate = useNavigate();
@@ -15,6 +16,8 @@ const Register = () => {
   });
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+  const [showConfirm, setShowConfirm] = useState(false);
+  const [confirmForm, setConfirmForm] = useState(null);
 
   const handleChange = (e) => {
     setForm({ ...form, [e.target.name]: e.target.value });
@@ -65,14 +68,22 @@ const Register = () => {
       return;
     }
 
+    // Show confirmation dialog
+    setConfirmForm(form);
+    setShowConfirm(true);
+  };
+
+  const handleConfirmRegister = async () => {
+    if (!confirmForm) return;
+
     setLoading(true);
     try {
       const payload = {
-        name: form.name,
-        phone: form.phone,
-        email: form.email,
-        password: form.password,
-        confirmPassword: form.confirmPassword,
+        name: confirmForm.name,
+        phone: confirmForm.phone,
+        email: confirmForm.email,
+        password: confirmForm.password,
+        confirmPassword: confirmForm.confirmPassword,
       };
 
       console.log("Sending registration request to:", `${API_BASE_URL}/api/auth/register`);
@@ -90,16 +101,19 @@ const Register = () => {
       console.log("Registration response data:", data);
 
       if (response.ok) {
+        setShowConfirm(false);
         alert("Registration successful! Please log in.");
         navigate("/login");
       } else {
         setError(data.message || "Registration failed");
+        setLoading(false);
+        setShowConfirm(false);
       }
     } catch (err) {
       console.error("Registration error:", err);
       setError("Connection error. Please try again.");
-    } finally {
       setLoading(false);
+      setShowConfirm(false);
     }
   };
 
@@ -183,6 +197,21 @@ const Register = () => {
             Log in
           </span>
         </p>
+
+        {/* Confirmation Dialog */}
+        <ConfirmationDialog
+          isOpen={showConfirm}
+          title="Confirm Registration"
+          message={`You're about to create an account for ${confirmForm?.email}. Proceed?`}
+          confirmText="Create Account"
+          cancelText="Cancel"
+          isLoading={loading}
+          onConfirm={handleConfirmRegister}
+          onCancel={() => {
+            setShowConfirm(false);
+            setLoading(false);
+          }}
+        />
       </div>
     </div>
   );

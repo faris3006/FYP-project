@@ -4,6 +4,7 @@ import { jwtDecode } from "jwt-decode";
 import "./shared.css";
 import "./Login.css";
 import API_BASE_URL from "./config/api";
+import ConfirmationDialog from "./components/ConfirmationDialog";
 
 const Login = () => {
   const navigate = useNavigate();
@@ -24,6 +25,10 @@ const Login = () => {
   const [sessionBlocked, setSessionBlocked] = useState(false);
   const [sessionBlockedEmail, setSessionBlockedEmail] = useState("");
   const [sessionBlockedPassword, setSessionBlockedPassword] = useState("");
+
+  // Confirmation dialog states
+  const [showConfirm, setShowConfirm] = useState(false);
+  const [confirmEmail, setConfirmEmail] = useState("");
 
   // Load block data from localStorage on component mount
   useEffect(() => {
@@ -135,6 +140,13 @@ const Login = () => {
       return;
     }
 
+    // Show confirmation dialog instead of submitting directly
+    setConfirmEmail(email);
+    setShowConfirm(true);
+  };
+
+  const handleConfirmLogin = async () => {
+    setError("");
     setLoading(true);
     try {
       const response = await fetch(`${API_BASE_URL}/api/auth/login`, {
@@ -161,10 +173,12 @@ const Login = () => {
             localStorage.setItem("mfaUserId", data.userId);
           }
           console.log("MFA required. Email stored:", email, "userId stored:", data.userId);
+          setShowConfirm(false);
           navigate(`/mfa-verification?email=${encodeURIComponent(email)}&userId=${encodeURIComponent(data.userId || "")}`);
         } else {
           localStorage.setItem("token", data.token);
           const user = jwtDecode(data.token);
+          setShowConfirm(false);
           navigate(user.role === "admin" ? "/admin" : "/");
         }
       } else {
@@ -180,6 +194,7 @@ const Login = () => {
           setSessionBlockedPassword(password);
           setError(data.message || "This account is already logged in on another device or browser. Please logout from the other device first, or click 'Force Logout' below.");
           setLoading(false);
+          setShowConfirm(false);
           return;
         }
         
@@ -208,11 +223,13 @@ const Login = () => {
           const remainingAttempts = hasHadFirstBlock ? (6 - newAttempts) : (3 - newAttempts);
           setError(`${data.message || "Login failed"}. ${remainingAttempts} attempt(s) remaining.`);
         }
+        setLoading(false);
+        setShowConfirm(false);
       }
     } catch (err) {
       setError("Connection error. Please try again.");
-    } finally {
       setLoading(false);
+      setShowConfirm(false);
     }
   };
 
@@ -307,6 +324,21 @@ const Login = () => {
             Sign up
           </span>
         </p>
+
+        {/* Confirmation Dialog */}
+        <ConfirmationDialog
+          isOpen={showConfirm}
+          title="Confirm Login"
+          message={`You're about to log in with ${confirmEmail}. Proceed?`}
+          confirmText="Login"
+          cancelText="Cancel"
+          isLoading={loading}
+          onConfirm={handleConfirmLogin}
+          onCancel={() => {
+            setShowConfirm(false);
+            setLoading(false);
+          }}
+        />
       </div>
     </div>
   );

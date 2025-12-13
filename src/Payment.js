@@ -6,6 +6,7 @@ import qrImage from "./assets/QR payment.jpeg";
 import { uploadReceiptFile } from "./utils/receiptStore";
 import { updateBookingStatus } from "./utils/bookingStorage";
 import API_BASE_URL from "./config/api";
+import ConfirmationDialog from "./components/ConfirmationDialog";
 
 const MAX_FILE_SIZE = 20 * 1024 * 1024;
 
@@ -26,6 +27,7 @@ const Payment = () => {
   const [success, setSuccess] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
+  const [showConfirm, setShowConfirm] = useState(false);
 
   // Load booking data on mount
   useEffect(() => {
@@ -174,7 +176,15 @@ const Payment = () => {
       return;
     }
 
+    // Show confirmation dialog
+    setShowConfirm(true);
+  };
+
+  const handleConfirmPayment = async () => {
+    setError("");
+    setSuccess("");
     setIsSubmitting(true);
+
     try {
       const token = localStorage.getItem("token");
       if (!token) throw new Error("Not authenticated");
@@ -200,14 +210,15 @@ const Payment = () => {
       console.log("Payment status updated:", updateResponse);
 
       setSuccess("Receipt uploaded successfully! Your booking is awaiting admin approval.");
+      setShowConfirm(false);
       setTimeout(() => {
         navigate("/booking-history");
       }, 2000);
     } catch (err) {
       setError("Failed to upload receipt. Please try again.");
       console.error("Receipt upload error:", err);
-    } finally {
       setIsSubmitting(false);
+      setShowConfirm(false);
     }
   };
 
@@ -348,6 +359,18 @@ const Payment = () => {
           </div>
         </div>
       </form>
+
+      {/* Confirmation Dialog */}
+      <ConfirmationDialog
+        isOpen={showConfirm}
+        title="Confirm Payment Receipt"
+        message={`You're about to submit your payment receipt for RM ${typeof totalAmount === 'number' ? totalAmount.toFixed(2) : totalAmount}. Your booking will be sent for admin approval.`}
+        confirmText="Confirm & Submit"
+        cancelText="Cancel"
+        isLoading={isSubmitting}
+        onConfirm={handleConfirmPayment}
+        onCancel={() => setShowConfirm(false)}
+      />
     </div>
   );
 };

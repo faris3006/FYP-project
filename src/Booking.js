@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { jwtDecode } from 'jwt-decode';
 import './Booking.css';
 import API_BASE_URL from './config/api';
+import ConfirmationDialog from './components/ConfirmationDialog';
 
 function Booking() {
   const navigate = useNavigate();
@@ -16,6 +17,8 @@ function Booking() {
   const [specialRequests, setSpecialRequests] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState('');
+  const [showConfirm, setShowConfirm] = useState(false);
+  const [confirmData, setConfirmData] = useState(null);
 
   const foodOptions = {
     'Grilled Chicken with 1 Side': 1,
@@ -98,12 +101,30 @@ function Booking() {
       return;
     }
 
+    // Show confirmation dialog
+    setConfirmData({
+      serviceName,
+      numPeopleInt,
+      totalAmount,
+      foodPackage,
+      drink,
+      dessert,
+    });
+    setShowConfirm(true);
+  };
+
+  const handleConfirmBooking = async () => {
+    if (!confirmData) return;
+
+    const { serviceName, numPeopleInt, totalAmount } = confirmData;
     setIsSubmitting(true);
+
     try {
       const token = localStorage.getItem('token');
       if (!token) {
         setError('You must be logged in to make a booking. Please log in and try again.');
         setIsSubmitting(false);
+        setShowConfirm(false);
         return;
       }
 
@@ -119,6 +140,7 @@ function Booking() {
           localStorage.removeItem('token');
           setError('Your session has expired. Please log in again to continue.');
           setIsSubmitting(false);
+          setShowConfirm(false);
           setTimeout(() => navigate('/login'), 2000);
           return;
         }
@@ -128,12 +150,14 @@ function Booking() {
         console.error('Failed to decode token:', tokenErr);
         setError('Invalid session. Please log in again.');
         setIsSubmitting(false);
+        setShowConfirm(false);
         return;
       }
 
       if (!userId) {
         setError('Unable to identify user. Please log in again.');
         setIsSubmitting(false);
+        setShowConfirm(false);
         return;
       }
 
@@ -166,6 +190,7 @@ function Booking() {
         console.error('Missing required fields:', missingFields);
         setError(`Missing required data: ${missingFields.join(', ')}. Please refresh and try again.`);
         setIsSubmitting(false);
+        setShowConfirm(false);
         return;
       }
 
@@ -198,6 +223,7 @@ function Booking() {
             localStorage.removeItem('token');
             setError('Your session is invalid. Please log in again to continue.');
             setIsSubmitting(false);
+            setShowConfirm(false);
             setTimeout(() => navigate('/login'), 2000);
             return;
           }
@@ -228,7 +254,8 @@ function Booking() {
 
       console.log('Booking created successfully with ID:', bookingId);
       
-      // Navigate to Payment page with booking ID via URL and state
+      // Close dialog and navigate to Payment page
+      setShowConfirm(false);
       navigate(`/payment?bookingId=${bookingId}`, { state: { bookingId, totalAmount, serviceName, userId } });
     } catch (err) {
       console.error('Booking submission error:', err);
@@ -247,11 +274,9 @@ function Booking() {
         setTimeout(() => navigate('/login'), 2000);
       }
       
-      // Form data is preserved - user can retry without re-entering information
-      console.log('Form data preserved for retry. User can resubmit when ready.');
       setError(userMessage);
-    } finally {
       setIsSubmitting(false);
+      setShowConfirm(false);
     }
   };
 
@@ -489,6 +514,21 @@ function Booking() {
           </button>
         </div>
       </form>
+
+      {/* Confirmation Dialog */}
+      <ConfirmationDialog
+        isOpen={showConfirm}
+        title="Confirm Your Booking"
+        message={confirmData ? `You're about to book for ${confirmData.numPeopleInt} guest${confirmData.numPeopleInt > 1 ? 's' : ''} at RM ${confirmData.totalAmount.toFixed(2)}. This will proceed to payment. Are you sure?` : 'Loading...'}
+        confirmText="Confirm Booking"
+        cancelText="Cancel"
+        isLoading={isSubmitting}
+        onConfirm={handleConfirmBooking}
+        onCancel={() => {
+          setShowConfirm(false);
+          setConfirmData(null);
+        }}
+      />
     </div>
   );
 }
