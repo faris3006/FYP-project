@@ -6,6 +6,7 @@ import qrImage from "./assets/QR payment.jpeg";
 import { uploadReceiptFile } from "./utils/receiptStore";
 import { updateBookingStatus } from "./utils/bookingStorage";
 import API_BASE_URL from "./config/api";
+import { authFetch } from "./utils/auth";
 import ConfirmationDialog from "./components/ConfirmationDialog";
 
 const MAX_FILE_SIZE = 20 * 1024 * 1024;
@@ -52,7 +53,7 @@ const Payment = () => {
         console.log("Fetching booking with ID:", bookingId);
         
         // Fetch booking from backend
-        const response = await fetch(`${API_BASE_URL}/api/bookings/${bookingId}`, {
+        const response = await authFetch(`${API_BASE_URL}/api/bookings/${bookingId}`, {
           headers: { Authorization: `Bearer ${token}` },
         });
 

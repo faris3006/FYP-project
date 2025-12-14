@@ -42,19 +42,12 @@ const ForgotPassword = () => {
         data = {};
       }
 
-      if (response.ok) {
-        setSuccess(
-          data.message ||
-            "Check your email for reset link"
-        );
-        setEmail("");
-      } else if (response.status === 404) {
-        setError(
-          "Password reset endpoint is unavailable. Please verify the backend route or contact support."
-        );
-      } else {
-        setError(data.message || "We couldn't process that request right now");
-      }
+      // Always show a success message to avoid account enumeration
+      setSuccess(
+        (data && data.message) ||
+          "If an account exists for this email, we've sent a reset link."
+      );
+      setEmail("");
     } catch (err) {
       setError("Connection error. Please try again.");
     } finally {

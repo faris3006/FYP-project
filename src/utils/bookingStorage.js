@@ -1,9 +1,10 @@
 
 import API_BASE_URL from "../config/api";
+import { authFetch } from "./auth";
 
 // Fetch all bookings for the current user
 export const getBookingsByUser = async (token) => {
-  const res = await fetch(`${API_BASE_URL}/api/bookings`, {
+  const res = await authFetch(`${API_BASE_URL}/api/bookings`, {
     headers: { Authorization: `Bearer ${token}` },
   });
   if (!res.ok) throw new Error("Failed to fetch bookings");
@@ -12,7 +13,7 @@ export const getBookingsByUser = async (token) => {
 
 // Fetch a single booking by ID
 export const getBookingById = async (bookingId, token) => {
-  const res = await fetch(`${API_BASE_URL}/api/bookings/${bookingId}`, {
+  const res = await authFetch(`${API_BASE_URL}/api/bookings/${bookingId}`, {
     headers: { Authorization: `Bearer ${token}` },
   });
   if (!res.ok) throw new Error("Failed to fetch booking");
@@ -21,7 +22,7 @@ export const getBookingById = async (bookingId, token) => {
 
 // Create or update a booking
 export const upsertBooking = async (booking, token) => {
-  const res = await fetch(`${API_BASE_URL}/api/bookings`, {
+  const res = await authFetch(`${API_BASE_URL}/api/bookings`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
@@ -35,7 +36,7 @@ export const upsertBooking = async (booking, token) => {
 
 // Update booking status
 export const updateBookingStatus = async (bookingId, status, token) => {
-  const res = await fetch(`${API_BASE_URL}/api/bookings/${bookingId}/status`, {
+  const res = await authFetch(`${API_BASE_URL}/api/bookings/${bookingId}/status`, {
     method: "PATCH",
     headers: {
       "Content-Type": "application/json",

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { jwtDecode } from "jwt-decode";
 import "./shared.css";
@@ -12,105 +12,97 @@ const Login = () => {
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
-  
-  // Password attempt tracking states
-  const [failedAttempts, setFailedAttempts] = useState(0);
+
+  // Server-driven lockout handling
   const [isTemporarilyBlocked, setIsTemporarilyBlocked] = useState(false);
   const [isPermanentlyBlocked, setIsPermanentlyBlocked] = useState(false);
-  const [blockEndTime, setBlockEndTime] = useState(null);
+  const [lockUntil, setLockUntil] = useState(null); // ISO/epoch from server
   const [remainingTime, setRemainingTime] = useState(0);
-  const [hasHadFirstBlock, setHasHadFirstBlock] = useState(false);
-  
-  // Single session enforcement states
+
+  // Exponential backoff from backend (retryAfter in seconds)
+  const [retryAfter, setRetryAfter] = useState(0);
+  const [retryCountdown, setRetryCountdown] = useState(0);
+
+  // IP blocking from backend (429 status)
+  const [isIpBlocked, setIsIpBlocked] = useState(false);
+  const [ipBlockedUntil, setIpBlockedUntil] = useState(null);
+  const [ipBlockCountdown, setIpBlockCountdown] = useState(0);
+
+  // Active session enforcement
   const [sessionBlocked, setSessionBlocked] = useState(false);
-  const [sessionBlockedEmail, setSessionBlockedEmail] = useState("");
-  const [sessionBlockedPassword, setSessionBlockedPassword] = useState("");
 
   // Confirmation dialog states
   const [showConfirm, setShowConfirm] = useState(false);
   const [confirmEmail, setConfirmEmail] = useState("");
 
-  // Load block data from localStorage on component mount
+  // Client-side progressive backoff after failures: 1s → 3s → 5s
+  const backoffDelays = useRef([1000, 3000, 5000]);
+  const backoffIndex = useRef(0);
+
+  // Handle URL param from password reset success: clean any UI lock messages
   useEffect(() => {
-    // Check if user just reset password - force clear all blocks
     const urlParams = new URLSearchParams(window.location.search);
-    const resetSuccess = urlParams.get('resetSuccess');
-    
-    if (resetSuccess === 'true') {
-      // Force clear all login block data
-      localStorage.removeItem('loginAttempts');
-      localStorage.removeItem('loginBlockEndTime');
-      localStorage.removeItem('loginPermanentBlock');
-      localStorage.removeItem('loginHadFirstBlock');
-      
-      // Clean up URL parameter
-      window.history.replaceState({}, '', '/login');
-      
-      // Reset all states
-      setFailedAttempts(0);
+    const resetSuccess = urlParams.get("resetSuccess");
+    if (resetSuccess === "true") {
+      window.history.replaceState({}, "", "/login");
       setIsTemporarilyBlocked(false);
       setIsPermanentlyBlocked(false);
-      setBlockEndTime(null);
+      setLockUntil(null);
       setRemainingTime(0);
-      setHasHadFirstBlock(false);
-      return;
-    }
-    
-    const savedAttempts = localStorage.getItem('loginAttempts');
-    const savedBlockEndTime = localStorage.getItem('loginBlockEndTime');
-    const savedPermanentBlock = localStorage.getItem('loginPermanentBlock');
-    const savedHadFirstBlock = localStorage.getItem('loginHadFirstBlock');
-
-    if (savedPermanentBlock === 'true') {
-      setIsPermanentlyBlocked(true);
-      setError('Your account is permanently blocked. Please reset your password.');
-    } else if (savedBlockEndTime) {
-      const endTime = parseInt(savedBlockEndTime);
-      const now = Date.now();
-      
-      if (now < endTime) {
-        setIsTemporarilyBlocked(true);
-        setBlockEndTime(endTime);
-        setRemainingTime(Math.ceil((endTime - now) / 1000));
-      } else {
-        // Block expired, clear it
-        localStorage.removeItem('loginBlockEndTime');
-        const attempts = parseInt(savedAttempts) || 0;
-        setFailedAttempts(attempts);
-      }
-    }
-    
-    if (savedAttempts) {
-      setFailedAttempts(parseInt(savedAttempts));
-    }
-    
-    if (savedHadFirstBlock === 'true') {
-      setHasHadFirstBlock(true);
+      setError("");
     }
   }, []);
 
-  // Countdown timer effect
+  // Countdown timer effect for temp lock
   useEffect(() => {
-    if (!isTemporarilyBlocked || !blockEndTime) return;
-
+    if (!isTemporarilyBlocked || !lockUntil) return;
+    const endEpoch = typeof lockUntil === "number" ? lockUntil : Date.parse(lockUntil);
     const interval = setInterval(() => {
       const now = Date.now();
-      const timeLeft = Math.ceil((blockEndTime - now) / 1000);
-
-      if (timeLeft <= 0) {
-        // Block expired
+      const timeLeft = Math.max(0, Math.ceil((endEpoch - now) / 1000));
+      setRemainingTime(timeLeft);
+      if (timeLeft === 0) {
         setIsTemporarilyBlocked(false);
-        setBlockEndTime(null);
-        setRemainingTime(0);
-        localStorage.removeItem('loginBlockEndTime');
-        setError('');
-      } else {
-        setRemainingTime(timeLeft);
+        setLockUntil(null);
+        setError("");
       }
     }, 1000);
-
     return () => clearInterval(interval);
-  }, [isTemporarilyBlocked, blockEndTime]);
+  }, [isTemporarilyBlocked, lockUntil]);
+
+  // Countdown timer for retryAfter (exponential backoff)
+  useEffect(() => {
+    if (retryAfter <= 0) return;
+    setRetryCountdown(retryAfter);
+    const interval = setInterval(() => {
+      setRetryCountdown((prev) => {
+        if (prev <= 1) {
+          setRetryAfter(0);
+          setError("");
+          return 0;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+    return () => clearInterval(interval);
+  }, [retryAfter]);
+
+  // Countdown timer for IP block
+  useEffect(() => {
+    if (!isIpBlocked || !ipBlockedUntil) return;
+    const endEpoch = typeof ipBlockedUntil === "number" ? ipBlockedUntil : Date.parse(ipBlockedUntil);
+    const interval = setInterval(() => {
+      const now = Date.now();
+      const timeLeft = Math.max(0, Math.ceil((endEpoch - now) / 1000));
+      setIpBlockCountdown(timeLeft);
+      if (timeLeft === 0) {
+        setIsIpBlocked(false);
+        setIpBlockedUntil(null);
+        setError("");
+      }
+    }, 1000);
+    return () => clearInterval(interval);
+  }, [isIpBlocked, ipBlockedUntil]);
 
   // Format remaining time as MM:SS
   const formatTime = (seconds) => {
@@ -123,17 +115,11 @@ const Login = () => {
     e.preventDefault();
     setError("");
 
-    // Check if permanently blocked
-    if (isPermanentlyBlocked) {
-      setError("Your account is permanently blocked. Please click 'Forgot password?' to reset your password.");
-      return;
-    }
-
-    // Check if temporarily blocked
-    if (isTemporarilyBlocked) {
-      setError("You cannot enter the password. Please wait.");
-      return;
-    }
+    // Respect server lock UI state
+    if (isPermanentlyBlocked) return setError("Your account is permanently locked. Use Forgot Password to reset.");
+    if (isTemporarilyBlocked) return setError("Too many attempts. Please wait for the countdown to finish.");
+    if (retryCountdown > 0) return setError(`Please wait ${retryCountdown} second(s) before trying again.`);
+    if (isIpBlocked) return setError("Your IP is blocked. Please wait for the countdown to finish.");
 
     if (!email || !password) {
       setError("Please fill in all fields");
@@ -148,6 +134,7 @@ const Login = () => {
   const handleConfirmLogin = async () => {
     setError("");
     setLoading(true);
+
     try {
       const response = await fetch(`${API_BASE_URL}/api/auth/login`, {
         method: "POST",
@@ -158,14 +145,7 @@ const Login = () => {
       const data = await response.json();
 
       if (response.ok) {
-        // Successful login - clear all attempt tracking
-        localStorage.removeItem('loginAttempts');
-        localStorage.removeItem('loginBlockEndTime');
-        localStorage.removeItem('loginPermanentBlock');
-        localStorage.removeItem('loginHadFirstBlock');
-        setFailedAttempts(0);
-        setHasHadFirstBlock(false);
-        
+        // Success
         if (data.mfaRequired) {
           // Store email and userId for MFA verification page
           localStorage.setItem("mfaEmail", email);
@@ -181,55 +161,65 @@ const Login = () => {
           setShowConfirm(false);
           navigate(user.role === "admin" ? "/admin" : "/");
         }
-      } else {
-        // Check if the error is due to active session on another device/browser
-        if (data.message && (
-          data.message.includes("already logged in") || 
-          data.message.includes("active session") ||
-          data.code === "SESSION_ACTIVE"
-        )) {
-          // Session is active on another device/browser
-          setSessionBlocked(true);
-          setSessionBlockedEmail(email);
-          setSessionBlockedPassword(password);
-          setError(data.message || "This account is already logged in on another device or browser. Please logout from the other device first, or click 'Force Logout' below.");
-          setLoading(false);
-          setShowConfirm(false);
-          return;
-        }
-        
-        // Failed login - increment attempts
-        const newAttempts = failedAttempts + 1;
-        setFailedAttempts(newAttempts);
-        localStorage.setItem('loginAttempts', newAttempts.toString());
-
-        // Check if this is the 3rd attempt (first block) or 6th attempt (permanent block)
-        if (newAttempts === 3 && !hasHadFirstBlock) {
-          // First block - temporary 5 minute block
-          const blockEnd = Date.now() + (5 * 60 * 1000); // 5 minutes from now
-          setIsTemporarilyBlocked(true);
-          setBlockEndTime(blockEnd);
-          setRemainingTime(300); // 5 minutes in seconds
-          localStorage.setItem('loginBlockEndTime', blockEnd.toString());
-          localStorage.setItem('loginHadFirstBlock', 'true');
-          setHasHadFirstBlock(true);
-          setError(`Too many failed attempts. You are blocked for 5 minutes.`);
-        } else if (newAttempts === 6) {
-          // Second round of 3 failures - permanent block
-          setIsPermanentlyBlocked(true);
-          localStorage.setItem('loginPermanentBlock', 'true');
-          setError("Too many failed attempts. Your account is permanently blocked. Please reset your password using 'Forgot password?'");
+      } else if (response.status === 400) {
+        // Invalid credentials; check for retryAfter (exponential backoff from backend)
+        if (typeof data.retryAfter === "number" && data.retryAfter > 0) {
+          setRetryAfter(data.retryAfter);
+          setError(`Too many attempts. Please wait ${data.retryAfter} second(s) before trying again...`);
         } else {
-          const remainingAttempts = hasHadFirstBlock ? (6 - newAttempts) : (3 - newAttempts);
-          setError(`${data.message || "Login failed"}. ${remainingAttempts} attempt(s) remaining.`);
+          const attemptsMsg =
+            typeof data.remainingAttempts === "number"
+              ? ` ${data.remainingAttempts} attempt(s) remaining.`
+              : "";
+          setError((data.message || "Invalid credentials.") + attemptsMsg);
         }
-        setLoading(false);
+        setShowConfirm(false);
+      } else if (response.status === 429) {
+        // IP blocked by backend
+        if (data.isIpBlocked && data.blockedUntil) {
+          setIsIpBlocked(true);
+          setIpBlockedUntil(data.blockedUntil);
+          setError(
+            data.message ||
+              "Your IP address has been temporarily blocked due to multiple failed attempts. Please wait."
+          );
+        } else {
+          setError(data.message || "Too many requests. Please try again later.");
+        }
+        setShowConfirm(false);
+      } else if (response.status === 403) {
+        if (data.isTemporarilyLocked && data.lockUntil) {
+          setIsTemporarilyBlocked(true);
+          setLockUntil(data.lockUntil);
+          setError(
+            data.message ||
+              (typeof data.remainingMinutes === "number"
+                ? `Too many attempts. Try again in ${data.remainingMinutes} minute(s).`
+                : "Too many attempts. Please wait.")
+          );
+        } else if (data.isPermanentlyLocked) {
+          setIsPermanentlyBlocked(true);
+          setError("Your account is permanently locked. Use Forgot Password to reset.");
+        } else if (data.isActiveSessionBlocked) {
+          setSessionBlocked(true);
+          setError("Active session detected. Logout on the other device first.");
+        } else if ((data.message || "").toLowerCase().includes("verify")) {
+          setError(data.message);
+        } else {
+          setError(data.message || "Access denied.");
+        }
+        setShowConfirm(false);
+      } else {
+        setError(data.message || "Login failed");
         setShowConfirm(false);
       }
     } catch (err) {
       setError("Connection error. Please try again.");
       setLoading(false);
       setShowConfirm(false);
+    }
+    finally {
+      setLoading(false);
     }
   };
 
@@ -240,6 +230,25 @@ const Login = () => {
         <p className="subtitle">Log in to your EventEase account</p>
 
         {error && <div className="error-message">{error}</div>}
+        
+        {retryCountdown > 0 && (
+          <div className="error-message" style={{ backgroundColor: '#ff5722', color: '#fff' }}>
+            ⏱ Please wait {retryCountdown} second(s) before trying again...
+          </div>
+        )}
+        
+        {isIpBlocked && (
+          <div className="error-message" style={{ backgroundColor: '#d32f2f', color: '#fff' }}>
+            🚫 Your IP address has been temporarily blocked due to multiple failed attempts.
+            <br />
+            <strong style={{ fontSize: '1.1em', marginTop: '8px', display: 'block' }}>
+              Time remaining: {formatTime(ipBlockCountdown)}
+            </strong>
+            <small style={{ fontSize: '0.85em', marginTop: '5px', display: 'block' }}>
+              Contact support if you believe this is a mistake.
+            </small>
+          </div>
+        )}
         
         {isTemporarilyBlocked && (
           <div className="error-message" style={{ backgroundColor: '#ff9800', color: '#fff' }}>
@@ -284,9 +293,9 @@ const Login = () => {
               onChange={(e) => setPassword(e.target.value)}
               placeholder="••••••••"
               required
-              disabled={isTemporarilyBlocked || isPermanentlyBlocked}
+              disabled={isTemporarilyBlocked || isPermanentlyBlocked || retryCountdown > 0 || isIpBlocked}
               style={
-                isTemporarilyBlocked || isPermanentlyBlocked
+                isTemporarilyBlocked || isPermanentlyBlocked || retryCountdown > 0 || isIpBlocked
                   ? { backgroundColor: '#f5f5f5', cursor: 'not-allowed' }
                   : {}
               }
@@ -307,14 +316,14 @@ const Login = () => {
           <button 
             type="submit" 
             className="btn-submit" 
-            disabled={loading || isTemporarilyBlocked || isPermanentlyBlocked || sessionBlocked}
+            disabled={loading || isTemporarilyBlocked || isPermanentlyBlocked || sessionBlocked || retryCountdown > 0 || isIpBlocked}
             style={
-              isTemporarilyBlocked || isPermanentlyBlocked || sessionBlocked
+              isTemporarilyBlocked || isPermanentlyBlocked || sessionBlocked || retryCountdown > 0 || isIpBlocked
                 ? { backgroundColor: '#ccc', cursor: 'not-allowed' }
                 : {}
             }
           >
-            {loading ? "Logging in..." : "Login"}
+            {loading ? "Logging in..." : retryCountdown > 0 ? `Wait ${retryCountdown}s...` : "Login"}
           </button>
         </form>
 

@@ -1,10 +1,11 @@
 import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import API_BASE_URL from "./config/api";
+import { authFetch, logoutEverywhere } from "./utils/auth";
 
 // Helper to fetch full booking by id (mirrors frontend user detail fetch)
 const getBookingById = async (id, token) => {
-  const res = await fetch(`${API_BASE_URL}/api/bookings/${id}`, {
+  const res = await authFetch(`${API_BASE_URL}/api/bookings/${id}`, {
     headers: { Authorization: `Bearer ${token}` },
   });
   if (!res.ok) throw new Error("Failed to fetch booking detail");
@@ -30,7 +31,7 @@ const AdminDashboard = () => {
     }
 
     // Fetch users from API (with fallback to empty array)
-    fetch(`${API_BASE_URL}/api/admin/users`, {
+    authFetch(`${API_BASE_URL}/api/admin/users`, {
       headers: { Authorization: `Bearer ${token}` },
     })
       .then((res) => {
@@ -55,7 +56,7 @@ const AdminDashboard = () => {
       .finally(() => setLoadingUsers(false));
 
     // Fetch bookings from API only
-    fetch(`${API_BASE_URL}/api/admin/bookings`, {
+    authFetch(`${API_BASE_URL}/api/admin/bookings`, {
       headers: { Authorization: `Bearer ${token}` },
     })
       .then((res) => {
@@ -118,7 +119,7 @@ const AdminDashboard = () => {
         token: token ? "Present" : "Missing"
       });
       
-      const res = await fetch(url, {
+      const res = await authFetch(url, {
         method: "PATCH",
         headers: {
           "Content-Type": "application/json",
@@ -167,7 +168,7 @@ const AdminDashboard = () => {
         token: token ? "Present" : "Missing"
       });
       
-      const res = await fetch(url, {
+      const res = await authFetch(url, {
         method: "PATCH",
         headers: {
           "Content-Type": "application/json",
@@ -205,25 +206,7 @@ const AdminDashboard = () => {
   const historyBookings = bookings;
 
   const logout = async () => {
-    const token = localStorage.getItem("token");
-    
-    if (token) {
-      try {
-        // Call backend logout API to end session
-        await fetch(`${API_BASE_URL}/api/auth/logout`, {
-          method: "POST",
-          headers: {
-            "Authorization": `Bearer ${token}`,
-            "Content-Type": "application/json"
-          }
-        });
-      } catch (error) {
-        console.error("Logout error:", error);
-      }
-    }
-    
-    // Clear local storage and redirect
-    localStorage.removeItem("token");
+    await logoutEverywhere();
     navigate("/login");
   };
 

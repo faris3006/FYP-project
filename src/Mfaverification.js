@@ -101,8 +101,18 @@ const MfaVerification = () => {
         const user = jwtDecode(data.token);
         console.log("MFA verification successful. User role:", user.role);
         navigate(user.role === "admin" ? "/admin" : "/");
+      } else if (response.status === 400) {
+        // Invalid/expired code scenarios from backend
+        const msg = (data.message || "Invalid code").toLowerCase();
+        if (msg.includes("expire")) {
+          setError("Code expired — login again.");
+        } else {
+          setError("Invalid code");
+        }
+      } else if (response.status === 403 && data.isActiveSessionBlocked) {
+        setError("Active session detected. Logout on the other device first.");
       } else {
-        setError(data.message || "Invalid MFA code");
+        setError(data.message || "Verification failed");
       }
     } catch (err) {
       console.error("MFA verification error:", err);

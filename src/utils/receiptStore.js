@@ -1,5 +1,6 @@
 
 import API_BASE_URL from "../config/api";
+import { authFetch } from "./auth";
 
 // Upload a receipt file to the backend for a booking
 // Backend route: POST /api/bookings/:bookingId/receipt-upload (multipart/form-data)
@@ -10,7 +11,7 @@ export const uploadReceiptFile = async (bookingId, file, token) => {
 
   const path = `${API_BASE_URL}/api/bookings/${bookingId}/receipt-upload`;
 
-  const res = await fetch(path, {
+  const res = await authFetch(path, {
     method: "POST",
     headers: {
       Authorization: `Bearer ${token}`,
