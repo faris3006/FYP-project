@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>Clickjacking Test Page</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        .info {
+            background: #fff;
+            padding: 20px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .status {
+            padding: 10px;
+            border-radius: 4px;
+            margin: 10px 0;
+        }
+        .blocked {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+        .vulnerable {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+        iframe {
+            border: 2px solid #333;
+            background: white;
+        }
+    </style>
+</head>
+<body>
+    <div class="info">
+        <h1>🔒 Clickjacking Protection Test</h1>
+        <p><strong>What to expect:</strong></p>
+        <ul>
+            <li>✅ <strong>Protected:</strong> The iframe below will be EMPTY or show an error</li>
+            <li>❌ <strong>Vulnerable:</strong> The iframe below will display your EventEase site</li>
+        </ul>
+    </div>
+
+    <div class="info">
+        <h2>Test Result:</h2>
+        <div id="status" class="status vulnerable">
+            ⏳ Testing... Check the iframe below.
+        </div>
+    </div>
+
+    <h3>Iframe Attempt:</h3>
+    <iframe 
+        id="testFrame"
+        src="https://fyp-project-nine-gray.vercel.app" 
+        width="1200" 
+        height="800"
+        onload="checkFrameLoad()"
+        onerror="frameBlocked()">
+    </iframe>
+
+    <script>
+        let frameLoaded = false;
+
+        function checkFrameLoad() {
+            const iframe = document.getElementById('testFrame');
+            const status = document.getElementById('status');
+            
+            try {
+                // Try to access iframe content
+                const iframeDoc = iframe.contentDocument || iframe.contentWindow.document;
+                
+                if (iframeDoc) {
+                    frameLoaded = true;
+                    status.className = 'status vulnerable';
+                    status.innerHTML = '❌ <strong>VULNERABLE:</strong> Site loads in iframe. Backend headers NOT implemented yet.';
+                }
+            } catch (e) {
+                // Cross-origin error means it loaded but we can't access it
+                frameLoaded = true;
+                status.className = 'status vulnerable';
+                status.innerHTML = '❌ <strong>VULNERABLE:</strong> Site loads in iframe. Backend headers NOT implemented yet.';
+            }
+        }
+
+        function frameBlocked() {
+            const status = document.getElementById('status');
+            status.className = 'status blocked';
+            status.innerHTML = '✅ <strong>PROTECTED:</strong> Iframe blocked! Clickjacking protection is working.';
+        }
+
+        // Check after 3 seconds if frame didn't load
+        setTimeout(() => {
+            if (!frameLoaded) {
+                const iframe = document.getElementById('testFrame');
+                const status = document.getElementById('status');
+                
+                // Check if iframe has actual content
+                if (iframe.contentWindow.length === 0) {
+                    status.className = 'status blocked';
+                    status.innerHTML = '✅ <strong>PROTECTED:</strong> Frame-busting or headers blocked the iframe!';
+                } else {
+                    status.className = 'status vulnerable';
+                    status.innerHTML = '⚠️ <strong>UNCLEAR:</strong> Frame may have loaded. Check visually below.';
+                }
+            }
+        }, 3000);
+    </script>
+
+    <div class="info" style="margin-top: 20px;">
+        <h3>What This Means:</h3>
+        <p><strong>If vulnerable:</strong> Your backend needs to implement security headers (see BACKEND_SECURITY_HEADERS.md)</p>
+        <p><strong>If protected:</strong> Either frame-busting code or backend headers are working!</p>
+    </div>
+</body>
+</html>
