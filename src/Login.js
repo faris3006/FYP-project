@@ -136,10 +136,21 @@ const Login = () => {
     setLoading(true);
 
     try {
+      // Get reCAPTCHA token before submitting
+      let captchaToken = "";
+      try {
+        if (window.grecaptcha) {
+          captchaToken = await window.grecaptcha.execute('6Lea7issAAAAANwH9stqtTCIrEcl38n0QBoE4CsM', { action: 'login' });
+        }
+      } catch (captchaError) {
+        console.error("reCAPTCHA error:", captchaError);
+        // Continue without token - backend will handle
+      }
+
       const response = await fetch(`${API_BASE_URL}/api/auth/login`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, password }),
+        body: JSON.stringify({ email, password, captchaToken }),
       });
 
       const data = await response.json();
