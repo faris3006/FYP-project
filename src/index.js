@@ -11,8 +11,33 @@ if (window.self !== window.top) {
   try {
     window.top.location = window.self.location;
   } catch (e) {
-    // If we can't break out, at least warn the user
-    document.body.innerHTML = '<div style="padding:20px;background:#f44336;color:white;font-family:Arial;text-align:center;"><h1>⚠️ Security Warning</h1><p>This page is being displayed in an unauthorized frame.</p><p>Please visit <a href="' + window.location.href + '" style="color:white;text-decoration:underline;">this page directly</a> for security.</p></div>';
+    // If we can't break out, render a warning without injecting HTML strings
+    document.body.textContent = '';
+    const warning = document.createElement('div');
+    Object.assign(warning.style, {
+      padding: '20px',
+      background: '#f44336',
+      color: 'white',
+      fontFamily: 'Arial, sans-serif',
+      textAlign: 'center',
+    });
+
+    const title = document.createElement('h1');
+    title.textContent = 'Security Warning';
+
+    const message = document.createElement('p');
+    message.textContent = 'This page is being displayed in an unauthorized frame.';
+
+    const linkMessage = document.createElement('p');
+    const link = document.createElement('a');
+    link.href = window.location.href;
+    link.textContent = 'Visit this page directly';
+    link.style.color = 'white';
+    link.style.textDecoration = 'underline';
+    linkMessage.append('Please visit ', link, ' for security.');
+
+    warning.append(title, message, linkMessage);
+    document.body.appendChild(warning);
   }
 }
 
