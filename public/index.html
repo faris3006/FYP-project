@@ -9,6 +9,12 @@
       name="description"
       content="Web site created using create-react-app"
     />
+    
+    <!-- Security Headers -->
+    <meta http-equiv="X-Frame-Options" content="DENY" />
+    <meta http-equiv="X-Content-Type-Options" content="nosniff" />
+    <meta http-equiv="Referrer-Policy" content="strict-origin-when-cross-origin" />
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://www.google.com https://www.gstatic.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: https:; connect-src 'self' https://fyp-project-backend.onrender.com; frame-src https://www.google.com; object-src 'none'; base-uri 'self';" />
     <link rel="apple-touch-icon" href="%PUBLIC_URL%/logo192.png" />
     <!--
       manifest.json provides metadata used when your web app is installed on a
@@ -17,7 +23,11 @@
     <link rel="manifest" href="%PUBLIC_URL%/manifest.json" />
     
     <!-- Google reCAPTCHA v3 -->
-    <script src="https://www.google.com/recaptcha/api.js?render=6Lea7issAAAAANwH9stqtTCIrEcl38n0QBoE4CsM"></script>
+    <script 
+      src="https://www.google.com/recaptcha/api.js?render=6Lea7issAAAAANwH9stqtTCIrEcl38n0QBoE4CsM"
+      crossorigin="anonymous"
+      referrerpolicy="no-referrer">
+    </script>
     
     <!--
       Notice the use of %PUBLIC_URL% in the tags above.
